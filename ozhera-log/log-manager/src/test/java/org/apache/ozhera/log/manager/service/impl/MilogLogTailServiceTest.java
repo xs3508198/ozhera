@@ -76,6 +76,7 @@ public class MilogLogTailServiceTest {
         List<String> list = Lists.newArrayList("1", "2", "3", "4", "10");
         List<String> newList = list.stream().filter(s -> !Objects.equals(s, "3")).collect(Collectors.toList());
         System.out.println(list);
+        System.out.println(newList);
     }
 
 }
