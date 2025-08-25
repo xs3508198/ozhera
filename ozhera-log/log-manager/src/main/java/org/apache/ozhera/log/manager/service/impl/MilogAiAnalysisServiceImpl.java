@@ -119,6 +119,7 @@ public class MilogAiAnalysisServiceImpl implements MilogAiAnalysisService {
                 BotQAParam param = new BotQAParam();
                 param.setLatestQuestion(gson.toJson(tailLogAiAnalysisDTO.getLogs()));
                 String text = formatString(param);
+                log.info("Start invoking the large model...");
                 analysisBot.getRc().news.put(Message.builder().content(text).build());
                 Message result = analysisBot.run().join();
                 answer = result.getContent();
@@ -148,6 +149,7 @@ public class MilogAiAnalysisServiceImpl implements MilogAiAnalysisService {
             conversationDO.setCreateTime(timestamp);
             conversationDO.setUpdateTime(timestamp);
             conversationDO.setConversationName("新对话 " + nowTimeStr);
+            log.info("The conversation information is stored in the database...");
             milogAiConversationMapper.insert(conversationDO);
             conversationId = conversationDO.getId();
             Map<String, List<BotQAParam.QAParam>> cache = new HashMap<>();
