@@ -21,6 +21,7 @@ package org.apache.ozhera.log.manager.service.bot;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.xiaomi.youpin.docean.anno.Service;
+import lombok.extern.slf4j.Slf4j;
 import run.mone.hive.Environment;
 import run.mone.hive.llm.LLM;
 import run.mone.hive.llm.LLMProvider;
@@ -32,6 +33,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 
+@Slf4j
 @Service
 public class LogAnalysisBot extends Role {
     private static String baseText = """
@@ -69,11 +71,13 @@ public class LogAnalysisBot extends Role {
         Message msg = this.rc.getNews().poll();
         String content = msg.getContent();
         String text = baseText.replace("{{log_text}}", content);
+        log.info("Create a request to invoke the large model...");
         JsonObject req = getReq(llm, text);
         List<AiMessage> messages = new ArrayList<>();
         messages.add(AiMessage.builder().jsonContent(req).build());
+        log.info("Start sending the request to invoke the large model...");
         String result = llm.syncChat(this, messages);
-
+        log.info("Successfully obtained the message of the large model, preparing to asynchronously return the data...");
         return CompletableFuture.completedFuture(Message.builder().content(result).build());
     }
 

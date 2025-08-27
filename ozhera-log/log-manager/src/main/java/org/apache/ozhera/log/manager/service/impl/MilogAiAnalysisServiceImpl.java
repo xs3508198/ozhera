@@ -123,6 +123,7 @@ public class MilogAiAnalysisServiceImpl implements MilogAiAnalysisService {
                 analysisBot.getRc().news.put(Message.builder().content(text).build());
                 Message result = analysisBot.run().join();
                 answer = result.getContent();
+                log.info("Successfully obtained the response message from the large model...");
             } catch (Exception e) {
                 log.error("An error occurred in the request for the large model， err: {}", e.getMessage());
                 return Result.fail(CommonError.SERVER_ERROR.getCode(), "An error occurred in the request for the large model");
