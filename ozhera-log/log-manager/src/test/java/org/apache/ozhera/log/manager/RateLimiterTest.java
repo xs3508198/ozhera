@@ -21,6 +21,7 @@ package org.apache.ozhera.log.manager;
 import com.google.common.util.concurrent.RateLimiter;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import lombok.extern.slf4j.Slf4j;
 import org.junit.Test;
 
 /**
@@ -29,6 +30,7 @@ import org.junit.Test;
  * @description
  * @date 2022/1/4 15:43
  */
+@Slf4j
 public class RateLimiterTest {
 
     @Test
@@ -57,6 +59,10 @@ public class RateLimiterTest {
 //            System.out.println("get 1 tokens: " + r.acquire(1) + "s");
 //            System.out.println("end");
 //        }
+    }
+
+    public void test(){
+        log.info("测试测试");
     }
 
 
