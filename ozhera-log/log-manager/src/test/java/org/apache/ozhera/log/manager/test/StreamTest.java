@@ -45,6 +45,7 @@ public class StreamTest {
 
     @Before
     public void init() {
+        log.info("初始化...");
         gson = new Gson();
     }
 
