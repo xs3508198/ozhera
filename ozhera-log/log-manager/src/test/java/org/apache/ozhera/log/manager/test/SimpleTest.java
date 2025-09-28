@@ -67,7 +67,7 @@ public class SimpleTest {
     }
 
     public void test2(){
-        log.info("test222222");
+        log.info("test33333");
     }
 
 }
