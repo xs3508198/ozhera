@@ -38,7 +38,7 @@ public class HttpClientTest {
     @Test
     public void test() {
         Gson gson = new Gson();
-
+        log.info("测试HttpClientTest");
         Map<String, Object> paramsMap = new HashMap<>();
         paramsMap.put("projectName", "");
         paramsMap.put("appId","" );
