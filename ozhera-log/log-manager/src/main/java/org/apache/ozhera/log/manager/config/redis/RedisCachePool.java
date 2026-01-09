@@ -19,9 +19,6 @@
 
 package org.apache.ozhera.log.manager.config.redis;
 
-import org.apache.ozhera.log.cache.util.CachePool;
-
-
 public interface RedisCachePool extends CachePool {
 
     /**

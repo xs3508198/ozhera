@@ -44,7 +44,7 @@ import java.util.concurrent.TimeUnit;
 @Service
 public class HeraAppServiceImpl implements HeraAppService {
 
-    @Reference(interfaceClass = org.apache.ozhera.app.api.service.HeraAppService.class, group = "$dubbo.env.group", check = false, timeout = 5000)
+    @Reference(interfaceClass = org.apache.ozhera.app.api.service.HeraAppService.class, version = "$dubbo.env.group", check = false, timeout = 5000)
     private org.apache.ozhera.app.api.service.HeraAppService heraAppService;
 
     private static final Cache<Long, AppBaseInfo> CACHE_LOCAL = CacheBuilder.newBuilder()
