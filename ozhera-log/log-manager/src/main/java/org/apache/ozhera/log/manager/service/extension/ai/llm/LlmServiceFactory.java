@@ -16,16 +16,26 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.ozhera.log.manager.model.vo;
+package org.apache.ozhera.log.manager.service.extension.ai.llm;
 
-import lombok.Data;
+import com.xiaomi.youpin.docean.Ioc;
+import lombok.extern.slf4j.Slf4j;
+import org.apache.ozhera.log.common.Config;
 
-@Data
-public class LogAiAnalysisResponse {
-    private Long conversationId;
-    private String content;
-    private Integer tokensUsed;
-    private Long processingTimeMs;
-    private String modelUsed;
-    private Integer remainingRequests;
+import static org.apache.ozhera.log.manager.service.extension.ai.llm.LlmService.DEFAULT_LLM_SERVICE_KEY;
+
+/**
+ * Factory for obtaining LlmService implementation.
+ * The actual implementation is determined by configuration.
+ */
+@Slf4j
+public class LlmServiceFactory {
+
+    private static String factualServiceName;
+
+    public static LlmService getLlmService() {
+        factualServiceName = Config.ins().get("ai.llm.service", DEFAULT_LLM_SERVICE_KEY);
+        log.debug("LlmServiceFactory factualServiceName:{}", factualServiceName);
+        return Ioc.ins().getBean(factualServiceName);
+    }
 }

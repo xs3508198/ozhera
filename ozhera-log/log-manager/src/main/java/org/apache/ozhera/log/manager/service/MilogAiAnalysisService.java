@@ -25,10 +25,22 @@ import org.apache.ozhera.log.manager.model.dto.LogAiAnalysisDTO;
 import org.apache.ozhera.log.manager.model.vo.LogAiAnalysisResponse;
 
 import java.util.List;
+import java.util.function.Consumer;
 
 public interface MilogAiAnalysisService {
 
     Result<LogAiAnalysisResponse> tailLogAiAnalysis(LogAiAnalysisDTO tailLogAiAnalysisDTO);
+
+    /**
+     * Stream AI analysis with SSE support
+     *
+     * @param dto       analysis request
+     * @param onToken   callback for each token chunk
+     * @param onComplete callback when complete with conversation ID and full response
+     * @param onError   callback when error occurs
+     */
+    void streamAiAnalysis(LogAiAnalysisDTO dto, Consumer<String> onToken,
+                          Consumer<LogAiAnalysisResponse> onComplete, Consumer<String> onError);
 
     void shutdown();
 

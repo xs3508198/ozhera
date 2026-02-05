@@ -34,6 +34,7 @@ import org.apache.ozhera.log.model.LogtailConfig;
 import org.apache.ozhera.log.model.MilogSpaceData;
 import org.apache.ozhera.log.model.SinkConfig;
 import org.apache.ozhera.log.stream.job.JobManager;
+import org.apache.ozhera.log.stream.job.extension.SinkJobPostProcessor;
 import org.apache.ozhera.log.stream.job.extension.StreamCommonExtension;
 import org.jetbrains.annotations.NotNull;
 
@@ -74,6 +75,8 @@ public class MilogConfigListener {
 
     private volatile String originConfig;
 
+    private SinkJobPostProcessor sinkJobPostProcessor;
+
     public MilogConfigListener(Long spaceId, String dataId, String group, MilogSpaceData milogSpaceData, NacosConfig nacosConfig) {
         this.spaceId = spaceId;
         this.dataId = dataId;
@@ -84,6 +87,7 @@ public class MilogConfigListener {
         this.listener = getListener(dataId, milogSpaceData);
         nacosConfig.addListener(dataId, group, listener);
         streamCommonExtension = getStreamCommonExtensionInstance();
+        sinkJobPostProcessor = getSinkJobPostProcessor();
     }
 
     private StreamCommonExtension getStreamCommonExtensionInstance() {
@@ -115,6 +119,14 @@ public class MilogConfigListener {
             // Restart all
             initNewJob(newMilogSpaceData);
         }
+    }
+
+    private SinkJobPostProcessor getSinkJobPostProcessor() {
+        String postProcessor = Config.ins().get("stream.job.post.processor", "");
+        if (postProcessor == null || postProcessor.isEmpty()) {
+            return null;
+        }
+        return Ioc.ins().getBean(postProcessor);
     }
 
     private void restartPerTail(SinkConfig sinkConfig, MilogSpaceData newMilogSpaceData) {
@@ -327,6 +339,9 @@ public class MilogConfigListener {
                         handleNacosConfigDataJob(newMilogSpaceData);
                     } else {
                         stopAllJobClear();
+                    }
+                    if (sinkJobPostProcessor != null) {
+                        sinkJobPostProcessor.start();
                     }
                 } catch (Exception e) {
                     log.error(String.format("listen tail error,dataId:%s", dataId), e);
