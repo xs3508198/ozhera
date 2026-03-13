@@ -61,6 +61,7 @@
         <module>ozhera-metrics-all</module>
         <module>trace-etl</module>
         <module>ozhera-intelligence</module>
+        <module>ozhera-mind</module>
     </modules>
 
     <properties>
