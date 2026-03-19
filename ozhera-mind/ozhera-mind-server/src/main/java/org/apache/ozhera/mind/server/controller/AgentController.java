@@ -27,10 +27,7 @@ import io.agentscope.core.message.TextBlock;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.ozhera.mind.server.dto.ChatRequest;
 import org.apache.ozhera.mind.server.dto.Result;
-import org.apache.ozhera.mind.server.dto.UserConfigRequest;
-import org.apache.ozhera.mind.service.llm.entity.UserConfig;
 import org.apache.ozhera.mind.service.service.LlmService;
-import org.apache.ozhera.mind.service.service.UserConfigService;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.*;
 import reactor.core.publisher.Flux;
@@ -40,14 +37,11 @@ import java.util.List;
 
 @Slf4j
 @RestController
-@RequestMapping("/api/v1/llm")
+@RequestMapping("/mind/llm")
 public class AgentController {
 
     @Resource
     private LlmService llmService;
-
-    @Resource
-    private UserConfigService userConfigService;
 
     // ==================== Chat APIs ====================
 
@@ -98,56 +92,6 @@ public class AgentController {
         } catch (Exception e) {
             log.error("Chat stream failed", e);
             return Flux.just("data: [ERROR] " + e.getMessage() + "\n\n");
-        }
-    }
-
-    // ==================== User Config APIs ====================
-
-    /**
-     * Save or update current user's LLM config
-     */
-    @PostMapping("/config")
-    public Result<UserConfig> saveOrUpdateConfig(@RequestBody UserConfigRequest request) {
-        try {
-            UserConfig config = UserConfig.builder()
-                    .modelPlatform(request.getModelPlatform())
-                    .modelType(request.getModelType())
-                    .apiKey(request.getApiKey())
-                    .build();
-
-            UserConfig saved = userConfigService.saveOrUpdate(config);
-            return Result.success(saved);
-        } catch (Exception e) {
-            log.error("Save config failed", e);
-            return Result.error(e.getMessage());
-        }
-    }
-
-    /**
-     * Get current user's LLM config
-     */
-    @GetMapping("/config")
-    public Result<UserConfig> getMyConfig() {
-        try {
-            UserConfig config = userConfigService.getMyConfig();
-            return Result.success(config);
-        } catch (Exception e) {
-            log.error("Get config failed", e);
-            return Result.error(e.getMessage());
-        }
-    }
-
-    /**
-     * Delete current user's LLM config
-     */
-    @DeleteMapping("/config")
-    public Result<Void> deleteMyConfig() {
-        try {
-            userConfigService.deleteMyConfig();
-            return Result.success(null);
-        } catch (Exception e) {
-            log.error("Delete config failed", e);
-            return Result.error(e.getMessage());
         }
     }
 
