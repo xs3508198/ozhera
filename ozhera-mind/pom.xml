@@ -32,8 +32,6 @@
     <artifactId>ozhera-mind</artifactId>
     <version>0.0.1-SNAPSHOT</version>
     <packaging>pom</packaging>
-    <name>ozhera-mind</name>
-    <description>OzHera Mind - AI Agent Module</description>
 
     <modules>
         <module>ozhera-mind-api</module>
@@ -70,26 +68,26 @@
 
     <dependencyManagement>
         <dependencies>
-            <!-- ozhera-mind internal modules -->
             <dependency>
-                <groupId>org.apache.ozhera.mind</groupId>
-                <artifactId>ozhera-mind-api</artifactId>
-                <version>${ozhera-mind.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>org.apache.ozhera.mind</groupId>
-                <artifactId>ozhera-mind-common</artifactId>
-                <version>${ozhera-mind.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>org.apache.ozhera.mind</groupId>
-                <artifactId>ozhera-mind-service</artifactId>
-                <version>${ozhera-mind.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>org.apache.ozhera.mind</groupId>
+                <groupId>org.apache.ozhera</groupId>
                 <artifactId>ozhera-mind-server</artifactId>
-                <version>${ozhera-mind.version}</version>
+                <version>0.0.1-SNAPSHOT</version>
+            </dependency>
+            <dependency>
+                <groupId>org.apache.ozhera</groupId>
+                <artifactId>ozhera-mind-service</artifactId>
+                <version>0.0.1-SNAPSHOT</version>
+            </dependency>
+
+            <dependency>
+                <groupId>org.apache.ozhera</groupId>
+                <artifactId>ozhera-mind-api</artifactId>
+                <version>0.0.1-SNAPSHOT</version>
+            </dependency>
+            <dependency>
+                <groupId>org.apache.ozhera</groupId>
+                <artifactId>ozhera-mind-common</artifactId>
+                <version>0.0.1-SNAPSHOT</version>
             </dependency>
 
             <!-- Spring Boot -->
@@ -245,6 +243,13 @@
                 <groupId>run.mone</groupId>
                 <artifactId>dubbo-registry-nacos</artifactId>
                 <version>1.2.1-mone</version>
+            </dependency>
+
+            <!-- Caffeine Cache -->
+            <dependency>
+                <groupId>com.github.ben-manes.caffeine</groupId>
+                <artifactId>caffeine</artifactId>
+                <version>3.1.8</version>
             </dependency>
 
         </dependencies>

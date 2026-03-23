@@ -31,12 +31,11 @@
 
 
     <artifactId>ozhera-mind-service</artifactId>
-    <name>ozhera-mind-service</name>
-    <description>OzHera Mind Service Module</description>
+
 
     <dependencies>
         <dependency>
-            <groupId>org.apache.ozhera.mind</groupId>
+            <groupId>org.apache.ozhera</groupId>
             <artifactId>ozhera-mind-common</artifactId>
         </dependency>
 
@@ -100,6 +99,12 @@
         <dependency>
             <groupId>run.mone</groupId>
             <artifactId>mi-tpclogin-sdk</artifactId>
+        </dependency>
+
+        <!-- Caffeine Cache -->
+        <dependency>
+            <groupId>com.github.ben-manes.caffeine</groupId>
+            <artifactId>caffeine</artifactId>
         </dependency>
     </dependencies>
 

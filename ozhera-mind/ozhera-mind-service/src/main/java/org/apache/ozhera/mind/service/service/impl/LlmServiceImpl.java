@@ -18,15 +18,19 @@
  */
 package org.apache.ozhera.mind.service.service.impl;
 
+import io.agentscope.core.message.ContentBlock;
 import io.agentscope.core.message.Msg;
 import io.agentscope.core.model.ChatResponse;
+import io.agentscope.core.model.Model;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.ozhera.mind.service.llm.provider.ModelProviderService;
+import org.apache.ozhera.mind.service.llm.LlmModelService;
 import org.apache.ozhera.mind.service.service.LlmService;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
 
 import javax.annotation.Resource;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 @Slf4j
@@ -34,17 +38,47 @@ import java.util.List;
 public class LlmServiceImpl implements LlmService {
 
     @Resource
-    private ModelProviderService modelProviderService;
+    private LlmModelService llmModelService;
 
     @Override
     public ChatResponse chat(String username, List<Msg> messages) {
-        log.debug("Chat with provider: {}, username: {}", modelProviderService.getProviderName(), username);
-        return modelProviderService.chat(messages);
+        Model model = llmModelService.getModel(username);
+        log.debug("Chat for user: {}, model: {}", username, model.getClass().getSimpleName());
+
+        try {
+            Flux<ChatResponse> responseFlux = model.stream(messages, Collections.emptyList(), null);
+            return responseFlux.reduce(this::mergeResponses).block();
+        } catch (Exception e) {
+            log.error("Chat failed for user: {}", username, e);
+            throw new RuntimeException("Chat failed: " + e.getMessage(), e);
+        }
     }
 
     @Override
     public Flux<ChatResponse> chatStream(String username, List<Msg> messages) {
-        log.debug("Chat stream with provider: {}, username: {}", modelProviderService.getProviderName(), username);
-        return modelProviderService.chatStream(messages);
+        Model model = llmModelService.getModel(username);
+        log.debug("Chat stream for user: {}, model: {}", username, model.getClass().getSimpleName());
+
+        try {
+            return model.stream(messages, Collections.emptyList(), null);
+        } catch (Exception e) {
+            log.error("Chat stream failed for user: {}", username, e);
+            return Flux.error(new RuntimeException("Chat stream failed: " + e.getMessage(), e));
+        }
+    }
+
+    private ChatResponse mergeResponses(ChatResponse r1, ChatResponse r2) {
+        List<ContentBlock> mergedContent = new ArrayList<>();
+        if (r1.getContent() != null) {
+            mergedContent.addAll(r1.getContent());
+        }
+        if (r2.getContent() != null) {
+            mergedContent.addAll(r2.getContent());
+        }
+        return ChatResponse.builder()
+                .content(mergedContent)
+                .finishReason(r2.getFinishReason())
+                .usage(r2.getUsage())
+                .build();
     }
 }

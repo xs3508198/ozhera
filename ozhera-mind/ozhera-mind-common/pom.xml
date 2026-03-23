@@ -35,7 +35,7 @@
 
     <dependencies>
         <dependency>
-            <groupId>org.apache.ozhera.mind</groupId>
+            <groupId>org.apache.ozhera</groupId>
             <artifactId>ozhera-mind-api</artifactId>
         </dependency>
 

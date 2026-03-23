@@ -31,12 +31,11 @@
 
 
     <artifactId>ozhera-mind-server</artifactId>
-    <name>ozhera-mind-server</name>
-    <description>OzHera Mind Server Module</description>
+
 
     <dependencies>
         <dependency>
-            <groupId>org.apache.ozhera.mind</groupId>
+            <groupId>org.apache.ozhera</groupId>
             <artifactId>ozhera-mind-service</artifactId>
         </dependency>
 

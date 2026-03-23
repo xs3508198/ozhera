@@ -23,8 +23,10 @@ import com.xiaomi.mone.tpc.login.util.UserUtil;
 import com.xiaomi.mone.tpc.login.vo.AuthUserVo;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.ozhera.mind.service.dao.mapper.UserConfigMapper;
+import org.apache.ozhera.mind.service.llm.LlmModelService;
 import org.apache.ozhera.mind.service.llm.entity.UserConfig;
 import org.apache.ozhera.mind.service.service.UserConfigService;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 
 import javax.annotation.Resource;
@@ -35,6 +37,10 @@ public class UserConfigServiceImpl implements UserConfigService {
 
     @Resource
     private UserConfigMapper userConfigMapper;
+
+    @Lazy
+    @Resource
+    private LlmModelService llmModelService;
 
     @Override
     public UserConfig saveOrUpdate(UserConfig config) {
@@ -47,6 +53,8 @@ public class UserConfigServiceImpl implements UserConfigService {
             existing.setApiKey(config.getApiKey());
             existing.setUpdateTime(System.currentTimeMillis());
             userConfigMapper.update(existing);
+            // Invalidate model cache when config changes
+            llmModelService.invalidateCache(username);
             log.info("Updated config for user: {}", username);
             return existing;
         } else {
@@ -71,6 +79,8 @@ public class UserConfigServiceImpl implements UserConfigService {
         UserConfig config = getByUsername(username);
         if (config != null) {
             userConfigMapper.deleteById(config.getId());
+            // Invalidate model cache when config is deleted
+            llmModelService.invalidateCache(username);
             log.info("Deleted config for user: {}", username);
         }
     }
