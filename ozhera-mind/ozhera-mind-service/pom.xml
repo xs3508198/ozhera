@@ -29,7 +29,7 @@
         <version>0.0.1-SNAPSHOT</version>
     </parent>
 
-    <groupId>org.apache.ozhera.mind</groupId>
+
     <artifactId>ozhera-mind-service</artifactId>
     <name>ozhera-mind-service</name>
     <description>OzHera Mind Service Module</description>

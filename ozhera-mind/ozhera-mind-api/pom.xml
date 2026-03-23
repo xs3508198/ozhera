@@ -29,7 +29,6 @@
         <version>0.0.1-SNAPSHOT</version>
     </parent>
 
-    <groupId>org.apache.ozhera.mind</groupId>
     <artifactId>ozhera-mind-api</artifactId>
     <name>ozhera-mind-api</name>
     <description>OzHera Mind API Module</description>

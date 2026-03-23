@@ -29,7 +29,6 @@
         <version>0.0.1-SNAPSHOT</version>
     </parent>
 
-    <groupId>org.apache.ozhera.mind</groupId>
     <artifactId>ozhera-mind-common</artifactId>
     <name>ozhera-mind-common</name>
     <description>OzHera Mind Common Module</description>

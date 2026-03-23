@@ -26,6 +26,14 @@ import org.springframework.stereotype.Component;
 @Component
 public class LlmProperties {
 
+    /**
+     * Provider selection: openai, dashscope, or custom provider name for internal use
+     */
+    @NacosValue(value = "${llm.provider:dashscope}", autoRefreshed = true)
+    private String provider;
+
+    // ==================== Common Options ====================
+
     @NacosValue(value = "${llm.temperature:0.7}", autoRefreshed = true)
     private Double temperature;
 
@@ -34,6 +42,25 @@ public class LlmProperties {
 
     @NacosValue(value = "${llm.top-p:1.0}", autoRefreshed = true)
     private Double topP;
+
+    // ==================== OpenAI Configuration ====================
+
+    @NacosValue(value = "${llm.openai.api-key:}", autoRefreshed = true)
+    private String openaiApiKey;
+
+    @NacosValue(value = "${llm.openai.base-url:}", autoRefreshed = true)
+    private String openaiBaseUrl;
+
+    @NacosValue(value = "${llm.openai.model:gpt-4o}", autoRefreshed = true)
+    private String openaiModel;
+
+    // ==================== DashScope Configuration ====================
+
+    @NacosValue(value = "${llm.dashscope.api-key:}", autoRefreshed = true)
+    private String dashscopeApiKey;
+
+    @NacosValue(value = "${llm.dashscope.model:qwen-max}", autoRefreshed = true)
+    private String dashscopeModel;
 
     @NacosValue(value = "${llm.dashscope.enable-thinking:false}", autoRefreshed = true)
     private Boolean dashscopeEnableThinking;
