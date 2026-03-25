@@ -19,6 +19,9 @@
 package org.apache.ozhera.mind.service.llm;
 
 import io.agentscope.core.model.Model;
+import org.apache.ozhera.mind.api.dto.ModelInfo;
+
+import java.util.List;
 
 /**
  * LLM Model Service Interface.
@@ -66,4 +69,14 @@ public interface LlmModelService {
      * @return true if user has a valid configuration
      */
     boolean hasUserConfig(String username);
+
+    /**
+     * List available models for a given provider.
+     * Internal network versions can override this to return their own model list.
+     *
+     * @param providerCode the provider code (e.g., "openai", "dashscope")
+     * @param apiKey the API key for authentication
+     * @return list of available models with owner info
+     */
+    List<ModelInfo> listModels(String providerCode, String apiKey);
 }

@@ -39,7 +39,7 @@ public class DubboConfiguration {
     @Value("${server.port}")
     private String httpGateWayPort;
 
-    @Value("${nacos.address}")
+    @Value("${dubbo.registry.address}")
     private String nacosAddress;
 
     @Value("${dubbo.group:staging}")
@@ -63,7 +63,7 @@ public class DubboConfiguration {
     @Bean
     public RegistryConfig registryConfig() {
         RegistryConfig registryConfig = new RegistryConfig();
-        registryConfig.setAddress("nacos://" + nacosAddress);
+        registryConfig.setAddress(nacosAddress);
         registryConfig.setGroup(dubboGroup);
         return registryConfig;
     }

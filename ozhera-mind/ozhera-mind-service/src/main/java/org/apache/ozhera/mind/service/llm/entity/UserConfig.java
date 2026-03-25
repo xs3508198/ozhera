@@ -45,6 +45,9 @@ public class UserConfig {
     @Column("model_type")
     private String modelType;
 
+    @Column("model_owner")
+    private String modelOwner;
+
     @Column("api_key")
     private String apiKey;
 

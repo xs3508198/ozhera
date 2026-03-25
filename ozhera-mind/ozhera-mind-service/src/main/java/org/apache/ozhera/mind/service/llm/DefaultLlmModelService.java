@@ -22,11 +22,13 @@ import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import io.agentscope.core.model.Model;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.ozhera.mind.api.dto.ModelInfo;
 import org.apache.ozhera.mind.service.llm.entity.UserConfig;
 import org.apache.ozhera.mind.service.service.UserConfigService;
 import org.springframework.stereotype.Service;
 
 import javax.annotation.Resource;
+import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -85,5 +87,11 @@ public class DefaultLlmModelService implements LlmModelService {
     @Override
     public boolean hasUserConfig(String username) {
         return userConfigService.getByUsername(username) != null;
+    }
+
+    @Override
+    public List<ModelInfo> listModels(String providerCode, String apiKey) {
+        log.info("Listing models for provider: {}", providerCode);
+        return chatModelFactory.listModels(providerCode, apiKey);
     }
 }

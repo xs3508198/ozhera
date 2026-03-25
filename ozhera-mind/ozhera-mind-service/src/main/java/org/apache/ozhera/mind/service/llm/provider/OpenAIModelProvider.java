@@ -18,15 +18,23 @@
  */
 package org.apache.ozhera.mind.service.llm.provider;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import io.agentscope.core.message.ContentBlock;
 import io.agentscope.core.message.Msg;
 import io.agentscope.core.model.ChatResponse;
 import io.agentscope.core.model.GenerateOptions;
 import io.agentscope.core.model.OpenAIChatModel;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.ozhera.mind.api.dto.ModelInfo;
 import org.apache.ozhera.mind.service.llm.config.LlmProperties;
 import reactor.core.publisher.Flux;
 
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -34,8 +42,15 @@ import java.util.List;
 @Slf4j
 public class OpenAIModelProvider implements ModelProviderService {
 
+    private static final String DEFAULT_BASE_URL = "https://api.openai.com/v1";
+    private static final ObjectMapper objectMapper = new ObjectMapper();
+    private static final HttpClient httpClient = HttpClient.newBuilder()
+            .connectTimeout(Duration.ofSeconds(30))
+            .build();
+
     private final OpenAIChatModel model;
     private final String providerName = "openai";
+    private final String baseUrl;
 
     public OpenAIModelProvider(LlmProperties properties) {
         log.info("Initializing OpenAI Model Provider, model: {}", properties.getOpenaiModel());
@@ -54,6 +69,9 @@ public class OpenAIModelProvider implements ModelProviderService {
 
         if (properties.getOpenaiBaseUrl() != null && !properties.getOpenaiBaseUrl().isEmpty()) {
             builder.baseUrl(properties.getOpenaiBaseUrl());
+            this.baseUrl = properties.getOpenaiBaseUrl();
+        } else {
+            this.baseUrl = DEFAULT_BASE_URL;
         }
 
         this.model = builder.build();
@@ -100,5 +118,48 @@ public class OpenAIModelProvider implements ModelProviderService {
                 .finishReason(r2.getFinishReason())
                 .usage(r2.getUsage())
                 .build();
+    }
+
+    @Override
+    public List<ModelInfo> listModels(String apiKey) {
+        log.debug("Listing OpenAI models");
+        try {
+            String url = baseUrl.endsWith("/") ? baseUrl + "models" : baseUrl + "/models";
+            HttpRequest request = HttpRequest.newBuilder()
+                    .uri(URI.create(url))
+                    .header("Authorization", "Bearer " + apiKey)
+                    .header("Content-Type", "application/json")
+                    .GET()
+                    .timeout(Duration.ofSeconds(30))
+                    .build();
+
+            HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+
+            if (response.statusCode() != 200) {
+                log.error("Failed to list OpenAI models, status: {}, body: {}", response.statusCode(), response.body());
+                throw new RuntimeException("Failed to list models: " + response.statusCode());
+            }
+
+            JsonNode root = objectMapper.readTree(response.body());
+            JsonNode data = root.get("data");
+            List<ModelInfo> models = new ArrayList<>();
+            if (data != null && data.isArray()) {
+                for (JsonNode model : data) {
+                    JsonNode idNode = model.get("id");
+                    JsonNode ownerNode = model.get("owned_by");
+                    if (idNode != null) {
+                        models.add(ModelInfo.builder()
+                                .modelId(idNode.asText())
+                                .owner(ownerNode != null ? ownerNode.asText() : null)
+                                .build());
+                    }
+                }
+            }
+            log.info("Found {} OpenAI models", models.size());
+            return models;
+        } catch (Exception e) {
+            log.error("Failed to list OpenAI models", e);
+            throw new RuntimeException("Failed to list OpenAI models: " + e.getMessage(), e);
+        }
     }
 }

@@ -7,5 +7,6 @@ public class UserModelConfigDTO {
     private Long id;
     private String apiKey;
     private String modelType;
+    private String modelOwner;
     private String modelPlatform;
 }

@@ -20,6 +20,7 @@ package org.apache.ozhera.mind.service.llm.provider;
 
 import io.agentscope.core.message.Msg;
 import io.agentscope.core.model.ChatResponse;
+import org.apache.ozhera.mind.api.dto.ModelInfo;
 import reactor.core.publisher.Flux;
 
 import java.util.List;
@@ -45,4 +46,13 @@ public interface ModelProviderService {
      * Streaming chat
      */
     Flux<ChatResponse> chatStream(List<Msg> messages);
+
+    /**
+     * List available models for this provider.
+     * Internal network versions can override this to return their own model list.
+     *
+     * @param apiKey the API key for authentication
+     * @return list of available models with owner info
+     */
+    List<ModelInfo> listModels(String apiKey);
 }

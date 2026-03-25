@@ -18,21 +18,35 @@
  */
 package org.apache.ozhera.mind.service.llm.provider;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import io.agentscope.core.message.ContentBlock;
 import io.agentscope.core.message.Msg;
 import io.agentscope.core.model.ChatResponse;
 import io.agentscope.core.model.DashScopeChatModel;
 import io.agentscope.core.model.GenerateOptions;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.ozhera.mind.api.dto.ModelInfo;
 import org.apache.ozhera.mind.service.llm.config.LlmProperties;
 import reactor.core.publisher.Flux;
 
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
 @Slf4j
 public class DashScopeModelProvider implements ModelProviderService {
+
+    private static final String DASHSCOPE_MODELS_URL = "https://dashscope.aliyuncs.com/api/v1/models";
+    private static final ObjectMapper objectMapper = new ObjectMapper();
+    private static final HttpClient httpClient = HttpClient.newBuilder()
+            .connectTimeout(Duration.ofSeconds(30))
+            .build();
 
     private final DashScopeChatModel model;
     private final String providerName = "dashscope";
@@ -97,5 +111,50 @@ public class DashScopeModelProvider implements ModelProviderService {
                 .finishReason(r2.getFinishReason())
                 .usage(r2.getUsage())
                 .build();
+    }
+
+    @Override
+    public List<ModelInfo> listModels(String apiKey) {
+        log.debug("Listing DashScope models");
+        try {
+            HttpRequest request = HttpRequest.newBuilder()
+                    .uri(URI.create(DASHSCOPE_MODELS_URL))
+                    .header("Authorization", "Bearer " + apiKey)
+                    .header("Content-Type", "application/json")
+                    .GET()
+                    .timeout(Duration.ofSeconds(30))
+                    .build();
+
+            HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+
+            if (response.statusCode() != 200) {
+                log.error("Failed to list DashScope models, status: {}, body: {}", response.statusCode(), response.body());
+                throw new RuntimeException("Failed to list models: " + response.statusCode());
+            }
+
+            JsonNode root = objectMapper.readTree(response.body());
+            JsonNode output = root.get("output");
+            List<ModelInfo> models = new ArrayList<>();
+            if (output != null) {
+                JsonNode modelsNode = output.get("models");
+                if (modelsNode != null && modelsNode.isArray()) {
+                    for (JsonNode model : modelsNode) {
+                        JsonNode modelIdNode = model.get("model");
+                        JsonNode nameNode = model.get("name");
+                        if (modelIdNode != null) {
+                            models.add(ModelInfo.builder()
+                                    .modelId(modelIdNode.asText())
+                                    .owner(nameNode != null ? nameNode.asText() : null)
+                                    .build());
+                        }
+                    }
+                }
+            }
+            log.info("Found {} DashScope models", models.size());
+            return models;
+        } catch (Exception e) {
+            log.error("Failed to list DashScope models", e);
+            throw new RuntimeException("Failed to list DashScope models: " + e.getMessage(), e);
+        }
     }
 }

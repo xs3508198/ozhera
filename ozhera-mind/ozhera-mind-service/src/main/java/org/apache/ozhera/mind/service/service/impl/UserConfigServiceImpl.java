@@ -50,6 +50,7 @@ public class UserConfigServiceImpl implements UserConfigService {
         if (existing != null) {
             existing.setModelPlatform(config.getModelPlatform());
             existing.setModelType(config.getModelType());
+            existing.setModelOwner(config.getModelOwner());
             existing.setApiKey(config.getApiKey());
             existing.setUpdateTime(System.currentTimeMillis());
             userConfigMapper.update(existing);
