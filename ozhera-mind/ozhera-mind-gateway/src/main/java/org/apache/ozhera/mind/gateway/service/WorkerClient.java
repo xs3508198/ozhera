@@ -19,8 +19,6 @@
 package org.apache.ozhera.mind.gateway.service;
 
 import lombok.extern.slf4j.Slf4j;
-import org.apache.ozhera.mind.api.dto.AgentCreateRequest;
-import org.apache.ozhera.mind.api.dto.AgentCreateResponse;
 import org.apache.ozhera.mind.api.dto.ChatRequest;
 import org.apache.ozhera.mind.api.dto.ChatResponse;
 import org.springframework.http.MediaType;
@@ -50,25 +48,10 @@ public class WorkerClient {
     }
 
     /**
-     * Create agent on a specific worker
-     */
-    public Mono<AgentCreateResponse> createAgent(String workerUrl, AgentCreateRequest request) {
-        log.info("Creating agent on worker: {}", workerUrl);
-        return webClient.post()
-                .uri(workerUrl + "/worker/agent/create")
-                .contentType(MediaType.APPLICATION_JSON)
-                .bodyValue(request)
-                .retrieve()
-                .bodyToMono(AgentCreateResponse.class)
-                .timeout(Duration.ofSeconds(30))
-                .doOnError(e -> log.error("Failed to create agent on worker: {}", workerUrl, e));
-    }
-
-    /**
      * Send chat message to worker (non-streaming)
      */
     public Mono<ChatResponse> chat(String workerUrl, ChatRequest request) {
-        log.debug("Sending chat to worker: {}, agentId: {}", workerUrl, request.getAgentId());
+        log.debug("Sending chat to worker: {}, user: {}", workerUrl, request.getUsername());
         return webClient.post()
                 .uri(workerUrl + "/worker/agent/chat")
                 .contentType(MediaType.APPLICATION_JSON)
@@ -83,7 +66,7 @@ public class WorkerClient {
      * Send chat message to worker (streaming via SSE)
      */
     public Flux<String> chatStream(String workerUrl, ChatRequest request) {
-        log.debug("Sending stream chat to worker: {}, agentId: {}", workerUrl, request.getAgentId());
+        log.debug("Sending stream chat to worker: {}, user: {}", workerUrl, request.getUsername());
         return webClient.post()
                 .uri(workerUrl + "/worker/agent/chat/stream")
                 .contentType(MediaType.APPLICATION_JSON)
@@ -92,30 +75,5 @@ public class WorkerClient {
                 .bodyToFlux(String.class)
                 .timeout(Duration.ofMinutes(5))
                 .doOnError(e -> log.error("Stream chat failed on worker: {}", workerUrl, e));
-    }
-
-    /**
-     * Destroy agent on worker
-     */
-    public Mono<Boolean> destroyAgent(String workerUrl, String agentId) {
-        log.info("Destroying agent {} on worker: {}", agentId, workerUrl);
-        return webClient.delete()
-                .uri(workerUrl + "/worker/agent/" + agentId)
-                .retrieve()
-                .bodyToMono(Boolean.class)
-                .timeout(Duration.ofSeconds(30))
-                .doOnError(e -> log.error("Failed to destroy agent on worker: {}", workerUrl, e));
-    }
-
-    /**
-     * Check if agent exists on worker
-     */
-    public Mono<Boolean> agentExists(String workerUrl, String agentId) {
-        return webClient.get()
-                .uri(workerUrl + "/worker/agent/" + agentId + "/exists")
-                .retrieve()
-                .bodyToMono(Boolean.class)
-                .timeout(Duration.ofSeconds(10))
-                .onErrorReturn(false);
     }
 }

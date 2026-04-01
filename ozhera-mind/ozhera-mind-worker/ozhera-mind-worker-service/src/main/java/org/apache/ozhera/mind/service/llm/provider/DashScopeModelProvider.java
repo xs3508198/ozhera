@@ -18,41 +18,33 @@
  */
 package org.apache.ozhera.mind.service.llm.provider;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import io.agentscope.core.message.ContentBlock;
-import io.agentscope.core.message.Msg;
-import io.agentscope.core.model.ChatResponse;
 import io.agentscope.core.model.DashScopeChatModel;
 import io.agentscope.core.model.GenerateOptions;
+import io.agentscope.core.model.Model;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.ozhera.mind.api.dto.ModelInfo;
 import org.apache.ozhera.mind.service.llm.config.LlmProperties;
-import reactor.core.publisher.Flux;
+import org.apache.ozhera.mind.service.llm.entity.UserConfig;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.stereotype.Service;
 
-import java.net.URI;
-import java.net.http.HttpClient;
-import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
-import java.time.Duration;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
+import javax.annotation.Resource;
 
+/**
+ * DashScope Model Provider.
+ * Activated when llm.provider=dashscope (default).
+ */
 @Slf4j
+@Service
+@ConditionalOnProperty(name = "llm.provider", havingValue = "dashscope", matchIfMissing = true)
 public class DashScopeModelProvider implements ModelProviderService {
 
-    private static final String DASHSCOPE_MODELS_URL = "https://dashscope.aliyuncs.com/api/v1/models";
-    private static final ObjectMapper objectMapper = new ObjectMapper();
-    private static final HttpClient httpClient = HttpClient.newBuilder()
-            .connectTimeout(Duration.ofSeconds(30))
-            .build();
+    @Resource
+    private LlmProperties properties;
 
-    private final DashScopeChatModel model;
-    private final String providerName = "dashscope";
-
-    public DashScopeModelProvider(LlmProperties properties) {
-        log.info("Initializing DashScope Model Provider, model: {}", properties.getDashscopeModel());
+    @Override
+    public Model createModel(UserConfig userConfig) {
+        log.info("Creating DashScope model for user: {}, model: {}",
+                userConfig.getUsername(), userConfig.getModelType());
 
         GenerateOptions options = GenerateOptions.builder()
                 .temperature(properties.getTemperature())
@@ -60,101 +52,13 @@ public class DashScopeModelProvider implements ModelProviderService {
                 .topP(properties.getTopP())
                 .build();
 
-        this.model = DashScopeChatModel.builder()
-                .apiKey(properties.getDashscopeApiKey())
-                .modelName(properties.getDashscopeModel())
+        return DashScopeChatModel.builder()
+                .apiKey(userConfig.getApiKey())
+                .modelName(userConfig.getModelType())
                 .stream(true)
                 .enableThinking(properties.getDashscopeEnableThinking())
                 .enableSearch(properties.getDashscopeEnableSearch())
                 .defaultOptions(options)
                 .build();
-    }
-
-    @Override
-    public String getProviderName() {
-        return providerName;
-    }
-
-    @Override
-    public ChatResponse chat(List<Msg> messages) {
-        log.debug("DashScope chat with {} messages", messages.size());
-        try {
-            Flux<ChatResponse> responseFlux = model.stream(messages, Collections.emptyList(), null);
-            return responseFlux.reduce(this::mergeResponses).block();
-        } catch (Exception e) {
-            log.error("DashScope chat failed", e);
-            throw new RuntimeException("DashScope chat failed: " + e.getMessage(), e);
-        }
-    }
-
-    @Override
-    public Flux<ChatResponse> chatStream(List<Msg> messages) {
-        log.debug("DashScope chat stream with {} messages", messages.size());
-        try {
-            return model.stream(messages, Collections.emptyList(), null);
-        } catch (Exception e) {
-            log.error("DashScope chat stream failed", e);
-            return Flux.error(new RuntimeException("DashScope chat stream failed: " + e.getMessage(), e));
-        }
-    }
-
-    private ChatResponse mergeResponses(ChatResponse r1, ChatResponse r2) {
-        List<ContentBlock> mergedContent = new ArrayList<>();
-        if (r1.getContent() != null) {
-            mergedContent.addAll(r1.getContent());
-        }
-        if (r2.getContent() != null) {
-            mergedContent.addAll(r2.getContent());
-        }
-        return ChatResponse.builder()
-                .content(mergedContent)
-                .finishReason(r2.getFinishReason())
-                .usage(r2.getUsage())
-                .build();
-    }
-
-    @Override
-    public List<ModelInfo> listModels(String apiKey) {
-        log.debug("Listing DashScope models");
-        try {
-            HttpRequest request = HttpRequest.newBuilder()
-                    .uri(URI.create(DASHSCOPE_MODELS_URL))
-                    .header("Authorization", "Bearer " + apiKey)
-                    .header("Content-Type", "application/json")
-                    .GET()
-                    .timeout(Duration.ofSeconds(30))
-                    .build();
-
-            HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
-
-            if (response.statusCode() != 200) {
-                log.error("Failed to list DashScope models, status: {}, body: {}", response.statusCode(), response.body());
-                throw new RuntimeException("Failed to list models: " + response.statusCode());
-            }
-
-            JsonNode root = objectMapper.readTree(response.body());
-            JsonNode output = root.get("output");
-            List<ModelInfo> models = new ArrayList<>();
-            if (output != null) {
-                JsonNode modelsNode = output.get("models");
-                if (modelsNode != null && modelsNode.isArray()) {
-                    for (JsonNode model : modelsNode) {
-                        JsonNode modelIdNode = model.get("model");
-                        JsonNode nameNode = model.get("name");
-                        if (modelIdNode != null) {
-                            models.add(ModelInfo.builder()
-                                    .modelId(modelIdNode.asText())
-                                    .owner(nameNode != null ? nameNode.asText() : null)
-                                    .build());
-                        }
-                    }
-                }
-            }
-            log.info("Found {} DashScope models", models.size());
-            return models;
-        } catch (Exception e) {
-            log.error("Failed to list DashScope models", e);
-            throw new RuntimeException("Failed to list DashScope models: " + e.getMessage(), e);
-        }
     }
 }

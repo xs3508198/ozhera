@@ -18,6 +18,8 @@
  */
 package org.apache.ozhera.mind.service.service.impl;
 
+import com.github.benmanes.caffeine.cache.Cache;
+import com.github.benmanes.caffeine.cache.Caffeine;
 import io.agentscope.core.ReActAgent;
 import io.agentscope.core.message.Msg;
 import io.agentscope.core.message.MsgRole;
@@ -25,105 +27,67 @@ import io.agentscope.core.message.TextBlock;
 import io.agentscope.core.model.Model;
 import io.agentscope.core.tool.Toolkit;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.ozhera.mind.api.dto.AgentCreateRequest;
-import org.apache.ozhera.mind.api.dto.AgentCreateResponse;
 import org.apache.ozhera.mind.api.dto.ChatRequest;
 import org.apache.ozhera.mind.api.dto.ChatResponse;
-import org.apache.ozhera.mind.service.llm.LlmModelService;
+import org.apache.ozhera.mind.service.llm.entity.UserConfig;
+import org.apache.ozhera.mind.service.llm.provider.ModelProviderService;
 import org.apache.ozhera.mind.service.llm.tool.LogToolService;
 import org.apache.ozhera.mind.service.service.AgentService;
+import org.apache.ozhera.mind.service.service.UserConfigService;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
 
 import javax.annotation.Resource;
 import java.util.List;
-import java.util.UUID;
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.TimeUnit;
 
 /**
- * Agent service implementation.
- * Manages agent lifecycle and execution.
+ * Agent Service Implementation.
+ * Manages agent lifecycle internally, one agent per user.
  */
 @Slf4j
 @Service
 public class AgentServiceImpl implements AgentService {
 
     /**
-     * In-memory agent storage
+     * Agent cache by username.
+     * Cache expires after 30 minutes of inactivity.
      */
-    private final ConcurrentHashMap<String, AgentContext> agents = new ConcurrentHashMap<>();
+    private final Cache<String, ReActAgent> agentCache = Caffeine.newBuilder()
+            .maximumSize(1000)
+            .expireAfterAccess(30, TimeUnit.MINUTES)
+            .build();
 
     @Resource
-    private LlmModelService llmModelService;
+    private UserConfigService userConfigService;
+
+    @Resource
+    private ModelProviderService modelProviderService;
 
     @Resource
     private LogToolService logToolService;
 
     @Override
-    public AgentCreateResponse createAgent(AgentCreateRequest request) {
-        String agentId = UUID.randomUUID().toString();
+    public ChatResponse chat(ChatRequest request) {
         String username = request.getUsername();
 
         try {
-            // Get user's LLM model
-            Model model = llmModelService.getModel(username);
+            ReActAgent agent = getOrCreateAgent(username);
 
-            // Create toolkit and register tools
-            Toolkit toolkit = new Toolkit();
-            toolkit.registerTool(logToolService);
-
-            // Create ReAct agent with tools
-            ReActAgent agent = ReActAgent.builder()
-                    .name(request.getAgentName() != null ? request.getAgentName() : "MindAgent")
-                    .model(model)
-                    .sysPrompt(request.getSystemPrompt())
-                    .toolkit(toolkit)
-                    .build();
-
-            // Store agent context
-            AgentContext context = new AgentContext(agentId, username, agent);
-            agents.put(agentId, context);
-
-            log.info("Created agent {} for user {}", agentId, username);
-
-            return AgentCreateResponse.builder()
-                    .agentId(agentId)
-                    .success(true)
-                    .build();
-        } catch (Exception e) {
-            log.error("Failed to create agent for user {}", username, e);
-            return AgentCreateResponse.builder()
-                    .success(false)
-                    .errorMessage(e.getMessage())
-                    .build();
-        }
-    }
-
-    @Override
-    public ChatResponse chat(ChatRequest request) {
-        AgentContext context = agents.get(request.getAgentId());
-        if (context == null) {
-            return ChatResponse.builder()
-                    .errorMessage("Agent not found: " + request.getAgentId())
-                    .finished(true)
-                    .build();
-        }
-
-        try {
             Msg userMsg = Msg.builder()
                     .name("user")
                     .role(MsgRole.USER)
                     .content(TextBlock.builder().text(request.getMessage()).build())
                     .build();
 
-            Msg response = context.getAgent().call(List.of(userMsg)).block();
+            Msg response = agent.call(List.of(userMsg)).block();
 
             return ChatResponse.builder()
                     .content(response != null ? response.getTextContent() : "")
                     .finished(true)
                     .build();
         } catch (Exception e) {
-            log.error("Chat failed for agent {}", request.getAgentId(), e);
+            log.error("Chat failed for user: {}", username, e);
             return ChatResponse.builder()
                     .errorMessage(e.getMessage())
                     .finished(true)
@@ -133,67 +97,68 @@ public class AgentServiceImpl implements AgentService {
 
     @Override
     public Flux<String> chatStream(ChatRequest request) {
-        AgentContext context = agents.get(request.getAgentId());
-        if (context == null) {
-            return Flux.just("{\"error\": \"Agent not found\"}");
-        }
+        String username = request.getUsername();
 
         try {
+            ReActAgent agent = getOrCreateAgent(username);
+
             Msg userMsg = Msg.builder()
                     .name("user")
                     .role(MsgRole.USER)
                     .content(TextBlock.builder().text(request.getMessage()).build())
                     .build();
 
-            // Use call() and convert to Flux for streaming response
-            return context.getAgent().call(List.of(userMsg))
+            return agent.call(List.of(userMsg))
                     .map(msg -> msg != null && msg.getTextContent() != null ? msg.getTextContent() : "")
                     .flux();
         } catch (Exception e) {
-            log.error("Stream chat failed for agent {}", request.getAgentId(), e);
+            log.error("Stream chat failed for user: {}", username, e);
             return Flux.just("{\"error\": \"" + e.getMessage() + "\"}");
         }
     }
 
-    @Override
-    public boolean destroyAgent(String agentId) {
-        AgentContext removed = agents.remove(agentId);
-        if (removed != null) {
-            log.info("Destroyed agent {}", agentId);
-            return true;
+    /**
+     * Get existing agent or create a new one for the user.
+     */
+    private ReActAgent getOrCreateAgent(String username) {
+        ReActAgent agent = agentCache.getIfPresent(username);
+        if (agent != null) {
+            log.info("Using cached agent for user: {}", username);
+            return agent;
         }
-        return false;
-    }
 
-    @Override
-    public boolean agentExists(String agentId) {
-        return agents.containsKey(agentId);
+        log.info("Creating new agent for user: {}", username);
+
+        // Get user config from database
+        UserConfig userConfig = userConfigService.getByUsername(username);
+        if (userConfig == null) {
+            throw new RuntimeException("User config not found. Please configure your API key and model settings first.");
+        }
+
+        // Create model using ModelProviderService
+        Model model = modelProviderService.createModel(userConfig);
+
+        // Create toolkit and register tools
+        Toolkit toolkit = new Toolkit();
+        toolkit.registerTool(logToolService);
+
+        // Create ReAct agent
+        agent = ReActAgent.builder()
+                .name("MindAgent")
+                .model(model)
+                .toolkit(toolkit)
+                .build();
+
+        agentCache.put(username, agent);
+        return agent;
     }
 
     /**
-     * Agent context holder
+     * Invalidate agent cache for a user.
+     * Should be called when user updates their config.
      */
-    private static class AgentContext {
-        private final String agentId;
-        private final String username;
-        private final ReActAgent agent;
-
-        public AgentContext(String agentId, String username, ReActAgent agent) {
-            this.agentId = agentId;
-            this.username = username;
-            this.agent = agent;
-        }
-
-        public String getAgentId() {
-            return agentId;
-        }
-
-        public String getUsername() {
-            return username;
-        }
-
-        public ReActAgent getAgent() {
-            return agent;
-        }
+    public void invalidateCache(String username) {
+        log.info("Invalidating agent cache for user: {}", username);
+        agentCache.invalidate(username);
     }
 }

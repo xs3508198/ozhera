@@ -18,48 +18,24 @@
  */
 package org.apache.ozhera.mind.api.service;
 
-import org.apache.ozhera.mind.api.dto.AgentCreateRequest;
-import org.apache.ozhera.mind.api.dto.AgentCreateResponse;
 import org.apache.ozhera.mind.api.dto.ChatRequest;
 import org.apache.ozhera.mind.api.dto.ChatResponse;
 
 /**
  * Dubbo interface for Mind Worker.
- * Gateway calls Worker through this interface.
+ * Note: Gateway uses HTTP/WebClient for streaming support.
+ * This interface is kept for potential non-streaming Dubbo calls.
  */
 public interface MindWorkerService {
 
     /**
-     * Create a new agent on this worker
+     * Send a chat message (non-streaming).
+     * Agent is created automatically if not exists for the user.
      *
-     * @param request agent creation request
-     * @return agent creation response with agentId
-     */
-    AgentCreateResponse createAgent(AgentCreateRequest request);
-
-    /**
-     * Send a chat message to an existing agent
-     *
-     * @param request chat request with agentId and message
+     * @param request chat request with username and message
      * @return chat response
      */
     ChatResponse chat(ChatRequest request);
-
-    /**
-     * Destroy an agent
-     *
-     * @param agentId the agent ID to destroy
-     * @return true if successful
-     */
-    boolean destroyAgent(String agentId);
-
-    /**
-     * Check if an agent exists on this worker
-     *
-     * @param agentId the agent ID to check
-     * @return true if exists
-     */
-    boolean agentExists(String agentId);
 
     /**
      * Get worker status (for health check and load balancing)
@@ -73,15 +49,14 @@ public interface MindWorkerService {
      */
     class WorkerStatus {
         private String workerId;
-        private int agentCount;
+        private int userCount;
         private long freeMemoryMb;
         private boolean healthy;
 
-        // Getters and setters
         public String getWorkerId() { return workerId; }
         public void setWorkerId(String workerId) { this.workerId = workerId; }
-        public int getAgentCount() { return agentCount; }
-        public void setAgentCount(int agentCount) { this.agentCount = agentCount; }
+        public int getUserCount() { return userCount; }
+        public void setUserCount(int userCount) { this.userCount = userCount; }
         public long getFreeMemoryMb() { return freeMemoryMb; }
         public void setFreeMemoryMb(long freeMemoryMb) { this.freeMemoryMb = freeMemoryMb; }
         public boolean isHealthy() { return healthy; }

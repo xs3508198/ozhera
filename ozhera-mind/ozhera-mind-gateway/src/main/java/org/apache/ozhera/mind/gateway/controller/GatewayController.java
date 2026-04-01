@@ -21,16 +21,16 @@ package org.apache.ozhera.mind.gateway.controller;
 import com.xiaomi.mone.tpc.login.util.UserUtil;
 import com.xiaomi.mone.tpc.login.vo.AuthUserVo;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.ozhera.mind.api.dto.AgentCreateRequest;
-import org.apache.ozhera.mind.api.dto.AgentCreateResponse;
 import org.apache.ozhera.mind.api.dto.ChatRequest;
 import org.apache.ozhera.mind.api.dto.ChatResponse;
 import org.apache.ozhera.mind.gateway.controller.dto.ApiResult;
-import org.apache.ozhera.mind.gateway.controller.dto.CreateAgentReq;
 import org.apache.ozhera.mind.gateway.controller.dto.SendMessageReq;
 import org.apache.ozhera.mind.gateway.service.GatewayAgentService;
 import org.springframework.http.MediaType;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
@@ -38,6 +38,7 @@ import javax.annotation.Resource;
 
 /**
  * Gateway API endpoints for frontend.
+ * Agent is managed internally per user, no need to explicitly create/destroy.
  */
 @Slf4j
 @RestController
@@ -48,34 +49,8 @@ public class GatewayController {
     private GatewayAgentService gatewayAgentService;
 
     /**
-     * Create a new agent
-     */
-    @PostMapping("/agent/create")
-    public Mono<ApiResult<AgentCreateResponse>> createAgent(@RequestBody CreateAgentReq req) {
-        AuthUserVo userInfo = UserUtil.getUser();
-        if (userInfo == null) {
-            return Mono.just(ApiResult.error("User not logged in"));
-        }
-
-        AgentCreateRequest request = new AgentCreateRequest();
-        request.setUserId(String.valueOf(userInfo.getUserId()));
-        request.setUsername(userInfo.genFullAccount());
-        request.setAgentName(req.getAgentName());
-        request.setEnabledTools(req.getEnabledTools());
-        request.setSystemPrompt(req.getSystemPrompt());
-
-        return gatewayAgentService.createAgent(request)
-                .map(response -> {
-                    if (response.isSuccess()) {
-                        return ApiResult.success(response);
-                    } else {
-                        return ApiResult.error(response.getErrorMessage());
-                    }
-                });
-    }
-
-    /**
-     * Send a message to an agent (non-streaming)
+     * Send a message to agent (non-streaming).
+     * Agent is created automatically if not exists for the user.
      */
     @PostMapping("/agent/chat")
     public Mono<ApiResult<ChatResponse>> chat(@RequestBody SendMessageReq req) {
@@ -85,10 +60,8 @@ public class GatewayController {
         }
 
         ChatRequest request = new ChatRequest();
-        request.setAgentId(req.getAgentId());
-        request.setUserId(String.valueOf(userInfo.getUserId()));
+        request.setUsername(userInfo.genFullAccount());
         request.setMessage(req.getMessage());
-        request.setStream(false);
 
         return gatewayAgentService.chat(request)
                 .map(response -> {
@@ -100,7 +73,8 @@ public class GatewayController {
     }
 
     /**
-     * Send a message to an agent (streaming via SSE)
+     * Send a message to agent (streaming via SSE).
+     * Agent is created automatically if not exists for the user.
      */
     @PostMapping(value = "/agent/chat/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     public Flux<String> chatStream(@RequestBody SendMessageReq req) {
@@ -110,25 +84,9 @@ public class GatewayController {
         }
 
         ChatRequest request = new ChatRequest();
-        request.setAgentId(req.getAgentId());
-        request.setUserId(String.valueOf(userInfo.getUserId()));
+        request.setUsername(userInfo.genFullAccount());
         request.setMessage(req.getMessage());
-        request.setStream(true);
 
         return gatewayAgentService.chatStream(request);
-    }
-
-    /**
-     * Destroy an agent
-     */
-    @DeleteMapping("/agent/{agentId}")
-    public Mono<ApiResult<Boolean>> destroyAgent(@PathVariable String agentId) {
-        AuthUserVo userInfo = UserUtil.getUser();
-        if (userInfo == null) {
-            return Mono.just(ApiResult.error("User not logged in"));
-        }
-
-        return gatewayAgentService.destroyAgent(agentId)
-                .map(ApiResult::success);
     }
 }

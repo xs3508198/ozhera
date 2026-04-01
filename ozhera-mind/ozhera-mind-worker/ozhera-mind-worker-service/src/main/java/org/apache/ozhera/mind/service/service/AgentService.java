@@ -18,39 +18,25 @@
  */
 package org.apache.ozhera.mind.service.service;
 
-import org.apache.ozhera.mind.api.dto.AgentCreateRequest;
-import org.apache.ozhera.mind.api.dto.AgentCreateResponse;
 import org.apache.ozhera.mind.api.dto.ChatRequest;
 import org.apache.ozhera.mind.api.dto.ChatResponse;
 import reactor.core.publisher.Flux;
 
 /**
- * Agent management service.
+ * Agent Service.
+ * Manages agent lifecycle internally and provides chat interfaces.
  */
 public interface AgentService {
 
     /**
-     * Create a new agent
-     */
-    AgentCreateResponse createAgent(AgentCreateRequest request);
-
-    /**
-     * Chat with an agent (non-streaming)
+     * Chat with agent (non-streaming).
+     * Agent is created automatically if not exists for the user.
      */
     ChatResponse chat(ChatRequest request);
 
     /**
-     * Chat with an agent (streaming)
+     * Chat with agent (streaming).
+     * Agent is created automatically if not exists for the user.
      */
     Flux<String> chatStream(ChatRequest request);
-
-    /**
-     * Destroy an agent
-     */
-    boolean destroyAgent(String agentId);
-
-    /**
-     * Check if agent exists
-     */
-    boolean agentExists(String agentId);
 }

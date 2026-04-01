@@ -18,41 +18,25 @@
  */
 package org.apache.ozhera.mind.service.llm.provider;
 
-import io.agentscope.core.message.Msg;
-import io.agentscope.core.model.ChatResponse;
-import org.apache.ozhera.mind.api.dto.ModelInfo;
-import reactor.core.publisher.Flux;
-
-import java.util.List;
+import io.agentscope.core.model.Model;
+import org.apache.ozhera.mind.service.llm.entity.UserConfig;
 
 /**
  * Model Provider Service Interface.
- * All LLM providers should implement this interface.
- * Internal network versions can implement their own providers.
+ *
+ * Implementations create Model instances based on user configuration.
+ * The platform is selected via llm.provider property:
+ * - dashscope: Use DashScopeModelProvider
+ * - openai: Use OpenAIModelProvider
+ * - Internal network versions can implement their own provider with @Primary
  */
 public interface ModelProviderService {
 
     /**
-     * Get the provider name
-     */
-    String getProviderName();
-
-    /**
-     * Non-streaming chat
-     */
-    ChatResponse chat(List<Msg> messages);
-
-    /**
-     * Streaming chat
-     */
-    Flux<ChatResponse> chatStream(List<Msg> messages);
-
-    /**
-     * List available models for this provider.
-     * Internal network versions can override this to return their own model list.
+     * Create a Model instance based on user configuration.
      *
-     * @param apiKey the API key for authentication
-     * @return list of available models with owner info
+     * @param userConfig User's configuration containing apiKey, modelType, etc.
+     * @return Model instance for Agent to use
      */
-    List<ModelInfo> listModels(String apiKey);
+    Model createModel(UserConfig userConfig);
 }

@@ -62,7 +62,7 @@ public class WorkerDiscoveryService {
     }
 
     /**
-     * Select the best worker for creating a new agent (least connections)
+     * Select the best worker for a new user (least connections)
      */
     public String selectWorkerForNewAgent() {
         List<String> workers = getAvailableWorkers();
@@ -71,17 +71,17 @@ public class WorkerDiscoveryService {
         }
 
         String selectedWorker = null;
-        long minAgentCount = Long.MAX_VALUE;
+        long minUserCount = Long.MAX_VALUE;
 
         for (String workerUrl : workers) {
-            long agentCount = agentRouterService.getWorkerAgentCount(workerUrl);
-            if (agentCount < minAgentCount) {
-                minAgentCount = agentCount;
+            long userCount = agentRouterService.getWorkerUserCount(workerUrl);
+            if (userCount < minUserCount) {
+                minUserCount = userCount;
                 selectedWorker = workerUrl;
             }
         }
 
-        log.info("Selected worker {} with {} agents", selectedWorker, minAgentCount);
+        log.info("Selected worker {} with {} users", selectedWorker, minUserCount);
         return selectedWorker;
     }
 }

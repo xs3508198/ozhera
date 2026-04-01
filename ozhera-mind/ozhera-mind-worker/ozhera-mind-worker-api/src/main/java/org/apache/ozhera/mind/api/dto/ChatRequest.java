@@ -28,22 +28,12 @@ public class ChatRequest implements Serializable {
     private static final long serialVersionUID = 1L;
 
     /**
-     * Agent ID to chat with
+     * Username (agent is managed internally per user)
      */
-    private String agentId;
-
-    /**
-     * User ID
-     */
-    private String userId;
+    private String username;
 
     /**
      * Chat message content
      */
     private String message;
-
-    /**
-     * Whether to stream response
-     */
-    private boolean stream;
 }

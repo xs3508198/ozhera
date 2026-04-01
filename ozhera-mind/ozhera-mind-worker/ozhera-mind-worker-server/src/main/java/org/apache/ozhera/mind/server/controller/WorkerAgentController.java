@@ -19,13 +19,14 @@
 package org.apache.ozhera.mind.server.controller;
 
 import lombok.extern.slf4j.Slf4j;
-import org.apache.ozhera.mind.api.dto.AgentCreateRequest;
-import org.apache.ozhera.mind.api.dto.AgentCreateResponse;
 import org.apache.ozhera.mind.api.dto.ChatRequest;
 import org.apache.ozhera.mind.api.dto.ChatResponse;
 import org.apache.ozhera.mind.service.service.AgentService;
 import org.springframework.http.MediaType;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 import reactor.core.publisher.Flux;
 
 import javax.annotation.Resource;
@@ -43,28 +44,12 @@ public class WorkerAgentController {
     private AgentService agentService;
 
     /**
-     * Create a new agent on this worker
-     */
-    @PostMapping("/create")
-    public AgentCreateResponse createAgent(@RequestBody AgentCreateRequest request) {
-        log.info("Creating agent for user: {}", request.getUsername());
-        try {
-            return agentService.createAgent(request);
-        } catch (Exception e) {
-            log.error("Failed to create agent", e);
-            return AgentCreateResponse.builder()
-                    .success(false)
-                    .errorMessage(e.getMessage())
-                    .build();
-        }
-    }
-
-    /**
-     * Chat with an agent (non-streaming)
+     * Chat with agent (non-streaming).
+     * Agent is created automatically if not exists for the user.
      */
     @PostMapping("/chat")
     public ChatResponse chat(@RequestBody ChatRequest request) {
-        log.debug("Chat request for agent: {}", request.getAgentId());
+        log.debug("Chat request for user: {}", request.getUsername());
         try {
             return agentService.chat(request);
         } catch (Exception e) {
@@ -77,33 +62,17 @@ public class WorkerAgentController {
     }
 
     /**
-     * Chat with an agent (streaming via SSE)
+     * Chat with agent (streaming via SSE).
+     * Agent is created automatically if not exists for the user.
      */
     @PostMapping(value = "/chat/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     public Flux<String> chatStream(@RequestBody ChatRequest request) {
-        log.debug("Stream chat request for agent: {}", request.getAgentId());
+        log.debug("Stream chat request for user: {}", request.getUsername());
         return agentService.chatStream(request)
                 .map(content -> "data: " + content + "\n\n")
                 .onErrorResume(e -> {
                     log.error("Stream chat failed", e);
                     return Flux.just("data: {\"error\": \"" + e.getMessage() + "\"}\n\n");
                 });
-    }
-
-    /**
-     * Destroy an agent
-     */
-    @DeleteMapping("/{agentId}")
-    public boolean destroyAgent(@PathVariable String agentId) {
-        log.info("Destroying agent: {}", agentId);
-        return agentService.destroyAgent(agentId);
-    }
-
-    /**
-     * Check if agent exists
-     */
-    @GetMapping("/{agentId}/exists")
-    public boolean agentExists(@PathVariable String agentId) {
-        return agentService.agentExists(agentId);
     }
 }

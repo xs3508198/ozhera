@@ -23,7 +23,8 @@ import lombok.Data;
 @Data
 public class SendMessageReq {
 
-    private String agentId;
-
+    /**
+     * Chat message content
+     */
     private String message;
 }

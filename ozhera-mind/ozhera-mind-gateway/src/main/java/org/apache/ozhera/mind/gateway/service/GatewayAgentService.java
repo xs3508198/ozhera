@@ -19,8 +19,6 @@
 package org.apache.ozhera.mind.gateway.service;
 
 import lombok.extern.slf4j.Slf4j;
-import org.apache.ozhera.mind.api.dto.AgentCreateRequest;
-import org.apache.ozhera.mind.api.dto.AgentCreateResponse;
 import org.apache.ozhera.mind.api.dto.ChatRequest;
 import org.apache.ozhera.mind.api.dto.ChatResponse;
 import org.apache.ozhera.mind.gateway.router.AgentRouterService;
@@ -42,114 +40,57 @@ public class GatewayAgentService {
     private WorkerClient workerClient;
 
     @Resource
-    private WorkerDiscoveryService workerDiscoveryService;
-
-    @Resource
     private AgentRouterService agentRouterService;
 
     /**
-     * Create a new agent.
-     * Gateway selects a worker and forwards the creation request.
+     * Route chat request to the correct worker based on username (non-streaming).
+     * Worker will automatically create agent if not exists.
      */
-    public Mono<AgentCreateResponse> createAgent(AgentCreateRequest request) {
-        log.info("Creating agent for user: {}", request.getUsername());
+    public Mono<ChatResponse> chat(ChatRequest request) {
+        String username = request.getUsername();
+        log.debug("Chat request for user: {}", username);
 
         try {
-            // Select the best worker (least connections)
-            String workerUrl = workerDiscoveryService.selectWorkerForNewAgent();
+            // Get or assign a worker for this user
+            String workerUrl = agentRouterService.getOrAssignWorker(username);
 
-            return workerClient.createAgent(workerUrl, request)
-                    .doOnSuccess(response -> {
-                        if (response.isSuccess()) {
-                            // Store agent -> worker mapping in Redis
-                            response.setWorkerId(workerUrl);
-                            agentRouterService.bindAgentToWorker(response.getAgentId(), workerUrl);
-                            log.info("Agent {} created on worker {}", response.getAgentId(), workerUrl);
-                        }
-                    })
+            return workerClient.chat(workerUrl, request)
                     .onErrorResume(e -> {
-                        log.error("Failed to create agent", e);
-                        return Mono.just(AgentCreateResponse.builder()
-                                .success(false)
-                                .errorMessage("Failed to create agent: " + e.getMessage())
+                        log.error("Chat failed for user: {}", username, e);
+                        return Mono.just(ChatResponse.builder()
+                                .errorMessage("Chat failed: " + e.getMessage())
+                                .finished(true)
                                 .build());
                     });
         } catch (Exception e) {
-            log.error("Failed to create agent", e);
-            return Mono.just(AgentCreateResponse.builder()
-                    .success(false)
-                    .errorMessage("Failed to create agent: " + e.getMessage())
-                    .build());
-        }
-    }
-
-    /**
-     * Route chat request to the correct worker based on agentId (non-streaming).
-     */
-    public Mono<ChatResponse> chat(ChatRequest request) {
-        String agentId = request.getAgentId();
-        log.debug("Chat request for agent: {}", agentId);
-
-        // Find which worker has this agent
-        String workerUrl = agentRouterService.getWorkerForAgent(agentId);
-        if (workerUrl == null) {
+            log.error("Failed to route chat request for user: {}", username, e);
             return Mono.just(ChatResponse.builder()
-                    .errorMessage("Agent not found: " + agentId)
+                    .errorMessage("Failed to route request: " + e.getMessage())
                     .finished(true)
                     .build());
         }
-
-        return workerClient.chat(workerUrl, request)
-                .doOnSuccess(r -> agentRouterService.refreshAgentExpiration(agentId))
-                .onErrorResume(e -> {
-                    log.error("Chat failed for agent: {}", agentId, e);
-                    return Mono.just(ChatResponse.builder()
-                            .errorMessage("Chat failed: " + e.getMessage())
-                            .finished(true)
-                            .build());
-                });
     }
 
     /**
      * Route chat request to the correct worker (streaming via SSE).
+     * Worker will automatically create agent if not exists.
      */
     public Flux<String> chatStream(ChatRequest request) {
-        String agentId = request.getAgentId();
-        log.debug("Stream chat request for agent: {}", agentId);
+        String username = request.getUsername();
+        log.debug("Stream chat request for user: {}", username);
 
-        // Find which worker has this agent
-        String workerUrl = agentRouterService.getWorkerForAgent(agentId);
-        if (workerUrl == null) {
-            return Flux.just("data: {\"error\": \"Agent not found: " + agentId + "\"}\n\n");
+        try {
+            // Get or assign a worker for this user
+            String workerUrl = agentRouterService.getOrAssignWorker(username);
+
+            return workerClient.chatStream(workerUrl, request)
+                    .onErrorResume(e -> {
+                        log.error("Stream chat failed for user: {}", username, e);
+                        return Flux.just("data: {\"error\": \"" + e.getMessage() + "\"}\n\n");
+                    });
+        } catch (Exception e) {
+            log.error("Failed to route stream chat request for user: {}", username, e);
+            return Flux.just("data: {\"error\": \"" + e.getMessage() + "\"}\n\n");
         }
-
-        agentRouterService.refreshAgentExpiration(agentId);
-        return workerClient.chatStream(workerUrl, request)
-                .onErrorResume(e -> {
-                    log.error("Stream chat failed for agent: {}", agentId, e);
-                    return Flux.just("data: {\"error\": \"" + e.getMessage() + "\"}\n\n");
-                });
-    }
-
-    /**
-     * Destroy an agent.
-     */
-    public Mono<Boolean> destroyAgent(String agentId) {
-        String workerUrl = agentRouterService.getWorkerForAgent(agentId);
-        if (workerUrl == null) {
-            log.warn("Agent not found for destruction: {}", agentId);
-            return Mono.just(false);
-        }
-
-        return workerClient.destroyAgent(workerUrl, agentId)
-                .doOnSuccess(result -> {
-                    if (result) {
-                        agentRouterService.unbindAgent(agentId);
-                    }
-                })
-                .onErrorResume(e -> {
-                    log.error("Failed to destroy agent: {}", agentId, e);
-                    return Mono.just(false);
-                });
     }
 }

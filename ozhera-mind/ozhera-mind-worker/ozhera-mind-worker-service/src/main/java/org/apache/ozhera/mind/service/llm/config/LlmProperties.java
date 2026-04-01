@@ -22,12 +22,18 @@ import com.alibaba.nacos.api.config.annotation.NacosValue;
 import lombok.Data;
 import org.springframework.stereotype.Component;
 
+/**
+ * LLM Configuration Properties.
+ *
+ * Platform selection: llm.provider (dashscope/openai/custom)
+ * API Key: Stored in database per user (UserConfig.apiKey)
+ */
 @Data
 @Component
 public class LlmProperties {
 
     /**
-     * Provider selection: openai, dashscope, or custom provider name for internal use
+     * Provider selection: dashscope, openai, or custom provider name for internal use
      */
     @NacosValue(value = "${llm.provider:dashscope}", autoRefreshed = true)
     private String provider;
@@ -45,22 +51,13 @@ public class LlmProperties {
 
     // ==================== OpenAI Configuration ====================
 
-    @NacosValue(value = "${llm.openai.api-key:}", autoRefreshed = true)
-    private String openaiApiKey;
-
+    /**
+     * OpenAI base URL (optional, for proxies or compatible APIs)
+     */
     @NacosValue(value = "${llm.openai.base-url:}", autoRefreshed = true)
     private String openaiBaseUrl;
 
-    @NacosValue(value = "${llm.openai.model:gpt-4o}", autoRefreshed = true)
-    private String openaiModel;
-
     // ==================== DashScope Configuration ====================
-
-    @NacosValue(value = "${llm.dashscope.api-key:}", autoRefreshed = true)
-    private String dashscopeApiKey;
-
-    @NacosValue(value = "${llm.dashscope.model:qwen-max}", autoRefreshed = true)
-    private String dashscopeModel;
 
     @NacosValue(value = "${llm.dashscope.enable-thinking:false}", autoRefreshed = true)
     private Boolean dashscopeEnableThinking;
