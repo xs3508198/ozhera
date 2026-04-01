@@ -20,7 +20,6 @@ package org.apache.ozhera.mind.gateway.router;
 
 import lombok.extern.slf4j.Slf4j;
 import org.apache.ozhera.mind.gateway.redis.RedisService;
-import org.apache.ozhera.mind.gateway.service.WorkerDiscoveryService;
 import org.springframework.stereotype.Service;
 
 import javax.annotation.Resource;
@@ -41,25 +40,17 @@ public class AgentRouterService {
     @Resource
     private RedisService redisService;
 
-    @Resource
-    private WorkerDiscoveryService workerDiscoveryService;
-
     /**
-     * Get worker for user, or assign one if not exists.
+     * Get worker for user if exists.
+     * @return workerId or null if not bound
      */
-    public String getOrAssignWorker(String username) {
+    public String getWorkerForUser(String username) {
         String key = USER_WORKER_PREFIX + username;
         String workerId = redisService.get(key);
-
         if (workerId != null) {
             log.debug("Found existing worker {} for user {}", workerId, username);
             refreshUserExpiration(username);
-            return workerId;
         }
-
-        // Select a worker for this user
-        workerId = workerDiscoveryService.selectWorkerForNewAgent();
-        bindUserToWorker(username, workerId);
         return workerId;
     }
 

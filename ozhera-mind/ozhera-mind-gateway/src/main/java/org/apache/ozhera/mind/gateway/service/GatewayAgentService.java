@@ -42,6 +42,9 @@ public class GatewayAgentService {
     @Resource
     private AgentRouterService agentRouterService;
 
+    @Resource
+    private WorkerDiscoveryService workerDiscoveryService;
+
     /**
      * Route chat request to the correct worker based on username (non-streaming).
      * Worker will automatically create agent if not exists.
@@ -51,8 +54,7 @@ public class GatewayAgentService {
         log.debug("Chat request for user: {}", username);
 
         try {
-            // Get or assign a worker for this user
-            String workerUrl = agentRouterService.getOrAssignWorker(username);
+            String workerUrl = getOrAssignWorker(username);
 
             return workerClient.chat(workerUrl, request)
                     .onErrorResume(e -> {
@@ -80,8 +82,7 @@ public class GatewayAgentService {
         log.debug("Stream chat request for user: {}", username);
 
         try {
-            // Get or assign a worker for this user
-            String workerUrl = agentRouterService.getOrAssignWorker(username);
+            String workerUrl = getOrAssignWorker(username);
 
             return workerClient.chatStream(workerUrl, request)
                     .onErrorResume(e -> {
@@ -92,5 +93,21 @@ public class GatewayAgentService {
             log.error("Failed to route stream chat request for user: {}", username, e);
             return Flux.just("data: {\"error\": \"" + e.getMessage() + "\"}\n\n");
         }
+    }
+
+    /**
+     * Get existing worker for user, or assign a new one.
+     */
+    private String getOrAssignWorker(String username) {
+        // Check if user already has an assigned worker
+        String workerUrl = agentRouterService.getWorkerForUser(username);
+        if (workerUrl != null) {
+            return workerUrl;
+        }
+
+        // Select a new worker and bind user to it
+        workerUrl = workerDiscoveryService.selectWorkerForNewAgent();
+        agentRouterService.bindUserToWorker(username, workerUrl);
+        return workerUrl;
     }
 }
