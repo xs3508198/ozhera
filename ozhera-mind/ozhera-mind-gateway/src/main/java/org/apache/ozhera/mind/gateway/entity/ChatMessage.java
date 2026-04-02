@@ -16,17 +16,36 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.ozhera.mind.gateway;
+package org.apache.ozhera.mind.gateway.entity;
 
-import org.springframework.boot.SpringApplication;
-import org.springframework.boot.autoconfigure.SpringBootApplication;
-import org.springframework.scheduling.annotation.EnableScheduling;
+import com.mybatisflex.annotation.Column;
+import com.mybatisflex.annotation.Id;
+import com.mybatisflex.annotation.KeyType;
+import com.mybatisflex.annotation.Table;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 
-@SpringBootApplication
-@EnableScheduling
-public class OzheraMindGatewayApplication {
+/**
+ * Chat message entity for querying conversation history.
+ */
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+@Table("hera_mind_chat_message")
+public class ChatMessage {
 
-    public static void main(String[] args) {
-        SpringApplication.run(OzheraMindGatewayApplication.class, args);
-    }
+    @Id(keyType = KeyType.Auto)
+    private Long id;
+
+    private String username;
+
+    private String role;
+
+    private String content;
+
+    @Column("created_at")
+    private Long createdAt;
 }

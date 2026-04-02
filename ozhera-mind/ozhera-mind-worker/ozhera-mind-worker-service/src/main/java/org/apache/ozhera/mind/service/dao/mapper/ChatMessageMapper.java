@@ -16,17 +16,15 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.ozhera.mind.gateway;
+package org.apache.ozhera.mind.service.dao.mapper;
 
-import org.springframework.boot.SpringApplication;
-import org.springframework.boot.autoconfigure.SpringBootApplication;
-import org.springframework.scheduling.annotation.EnableScheduling;
+import com.mybatisflex.core.BaseMapper;
+import org.apache.ibatis.annotations.Mapper;
+import org.apache.ozhera.mind.service.entity.ChatMessage;
 
-@SpringBootApplication
-@EnableScheduling
-public class OzheraMindGatewayApplication {
-
-    public static void main(String[] args) {
-        SpringApplication.run(OzheraMindGatewayApplication.class, args);
-    }
+/**
+ * Mapper for chat message persistence.
+ */
+@Mapper
+public interface ChatMessageMapper extends BaseMapper<ChatMessage> {
 }

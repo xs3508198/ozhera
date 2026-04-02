@@ -84,4 +84,12 @@ public class WorkerDiscoveryService {
         log.info("Selected worker {} with {} users", selectedWorker, minUserCount);
         return selectedWorker;
     }
+
+    /**
+     * Check if a worker is still alive (registered in Nacos)
+     */
+    public boolean isWorkerAlive(String workerUrl) {
+        List<String> availableWorkers = getAvailableWorkers();
+        return availableWorkers.contains(workerUrl);
+    }
 }

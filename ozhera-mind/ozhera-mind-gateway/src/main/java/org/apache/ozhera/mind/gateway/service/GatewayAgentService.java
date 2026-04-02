@@ -97,12 +97,19 @@ public class GatewayAgentService {
 
     /**
      * Get existing worker for user, or assign a new one.
+     * If the assigned worker is no longer alive, reassign to a new worker.
      */
     private String getOrAssignWorker(String username) {
         // Check if user already has an assigned worker
         String workerUrl = agentRouterService.getWorkerForUser(username);
         if (workerUrl != null) {
-            return workerUrl;
+            // Verify worker is still alive
+            if (workerDiscoveryService.isWorkerAlive(workerUrl)) {
+                return workerUrl;
+            }
+            // Worker is no longer available, unbind user
+            log.warn("Worker {} is no longer available, reassigning user {}", workerUrl, username);
+            agentRouterService.unbindUser(username);
         }
 
         // Select a new worker and bind user to it

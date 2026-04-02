@@ -33,8 +33,8 @@ import javax.annotation.Resource;
 @Service
 public class AgentRouterService {
 
-    private static final String USER_WORKER_PREFIX = "mind:user:worker:";
-    private static final String WORKER_USER_COUNT_PREFIX = "mind:worker:user:count:";
+    private static final String USER_WORKER_PREFIX = "hera:mind:user:worker:";
+    private static final String WORKER_USER_COUNT_PREFIX = "hera:mind:worker:user:count:";
     private static final long USER_EXPIRE_SECONDS = 24 * 60 * 60;
 
     @Resource
@@ -91,5 +91,37 @@ public class AgentRouterService {
     public void refreshUserExpiration(String username) {
         String key = USER_WORKER_PREFIX + username;
         redisService.expire(key, USER_EXPIRE_SECONDS);
+    }
+
+    /**
+     * Get all user-worker mappings for cleanup purpose.
+     * @return Map of username -> workerUrl
+     */
+    public java.util.Map<String, String> getAllUserWorkerMappings() {
+        java.util.Map<String, String> mappings = new java.util.HashMap<>();
+        java.util.Set<String> keys = redisService.scan(USER_WORKER_PREFIX + "*");
+        for (String key : keys) {
+            String username = key.substring(USER_WORKER_PREFIX.length());
+            String workerUrl = redisService.get(key);
+            if (workerUrl != null) {
+                mappings.put(username, workerUrl);
+            }
+        }
+        return mappings;
+    }
+
+    /**
+     * Reset worker user count (used during cleanup)
+     */
+    public void resetWorkerUserCount(String workerId, long count) {
+        String key = WORKER_USER_COUNT_PREFIX + workerId;
+        redisService.set(key, String.valueOf(count));
+    }
+
+    /**
+     * Delete worker user count key (for dead workers)
+     */
+    public void deleteWorkerUserCount(String workerId) {
+        redisService.del(WORKER_USER_COUNT_PREFIX + workerId);
     }
 }
