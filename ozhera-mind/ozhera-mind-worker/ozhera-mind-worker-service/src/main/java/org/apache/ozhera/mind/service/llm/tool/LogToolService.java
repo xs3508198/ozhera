@@ -35,7 +35,7 @@ import java.util.List;
 @Service
 public class LogToolService {
 
-    @DubboReference(interfaceClass = LogAgentApiService.class, group = "${log.agent.group}", version = "${log.agent.version}", check = false)
+    @DubboReference(interfaceClass = LogAgentApiService.class, group = "${log.agent.group}", check = false)
     private LogAgentApiService logAgentApiService;
 
     // ==================== Space Tools ====================
