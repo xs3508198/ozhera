@@ -56,7 +56,7 @@ public class UserConfigController {
             return ApiResult.success(toDTO(saved));
         } catch (Exception e) {
             log.error("Save user config failed", e);
-            return ApiResult.error(e.getMessage());
+            return ApiResult.fail(e.getMessage());
         }
     }
 
@@ -68,7 +68,7 @@ public class UserConfigController {
         try {
             UserConfig existing = userConfigService.getMyConfig();
             if (existing == null) {
-                return ApiResult.error("Please save platform and apiKey first");
+                return ApiResult.fail("Please save platform and apiKey first");
             }
 
             existing.setModelType(modelInfo.getModelId());
@@ -77,7 +77,7 @@ public class UserConfigController {
             return ApiResult.success(toDTO(updated));
         } catch (Exception e) {
             log.error("Update model failed", e);
-            return ApiResult.error(e.getMessage());
+            return ApiResult.fail(e.getMessage());
         }
     }
 
@@ -94,7 +94,7 @@ public class UserConfigController {
             return ApiResult.success(toDTO(config));
         } catch (Exception e) {
             log.error("Get user config failed", e);
-            return ApiResult.error(e.getMessage());
+            return ApiResult.fail(e.getMessage());
         }
     }
 
@@ -106,7 +106,7 @@ public class UserConfigController {
         try {
             UserConfig existing = userConfigService.getMyConfig();
             if (existing == null) {
-                return ApiResult.error("Config not found, please create first");
+                return ApiResult.fail("Config not found, please create first");
             }
 
             existing.setModelPlatform(dto.getModelPlatform());
@@ -118,7 +118,7 @@ public class UserConfigController {
             return ApiResult.success(toDTO(updated));
         } catch (Exception e) {
             log.error("Update user config failed", e);
-            return ApiResult.error(e.getMessage());
+            return ApiResult.fail(e.getMessage());
         }
     }
 
@@ -130,13 +130,13 @@ public class UserConfigController {
         try {
             UserConfig existing = userConfigService.getMyConfig();
             if (existing == null) {
-                return ApiResult.error("Config not found");
+                return ApiResult.fail("Config not found");
             }
             userConfigService.deleteMyConfig();
             return ApiResult.success(true);
         } catch (Exception e) {
             log.error("Delete user config failed", e);
-            return ApiResult.error(e.getMessage());
+            return ApiResult.fail(e.getMessage());
         }
     }
 
@@ -148,17 +148,17 @@ public class UserConfigController {
         try {
             UserConfig config = userConfigService.getMyConfig();
             if (config == null) {
-                return ApiResult.error("Please save platform and apiKey first");
+                return ApiResult.fail("Please save platform and apiKey first");
             }
             if (config.getModelPlatform() == null || config.getApiKey() == null) {
-                return ApiResult.error("Platform and apiKey are required");
+                return ApiResult.fail("Platform and apiKey are required");
             }
 
             List<ModelInfo> models = llmModelService.listModels(config.getModelPlatform(), config.getApiKey());
             return ApiResult.success(models);
         } catch (Exception e) {
             log.error("List models failed", e);
-            return ApiResult.error(e.getMessage());
+            return ApiResult.fail(e.getMessage());
         }
     }
 

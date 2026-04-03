@@ -35,11 +35,11 @@ public class ApiResult<T> {
         return new ApiResult<>(0, "success", data);
     }
 
-    public static <T> ApiResult<T> error(String message) {
+    public static <T> ApiResult<T> fail(String message) {
         return new ApiResult<>(-1, message, null);
     }
 
-    public static <T> ApiResult<T> error(int code, String message) {
+    public static <T> ApiResult<T> fail(int code, String message) {
         return new ApiResult<>(code, message, null);
     }
 }

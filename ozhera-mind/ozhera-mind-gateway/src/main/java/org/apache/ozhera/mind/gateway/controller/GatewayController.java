@@ -56,7 +56,7 @@ public class GatewayController {
     public Mono<ApiResult<ChatResponse>> chat(@RequestBody SendMessageReq req) {
         AuthUserVo userInfo = UserUtil.getUser();
         if (userInfo == null) {
-            return Mono.just(ApiResult.error("User not logged in"));
+            return Mono.just(ApiResult.fail("User not logged in"));
         }
 
         ChatRequest request = new ChatRequest();
@@ -66,7 +66,7 @@ public class GatewayController {
         return gatewayAgentService.chat(request)
                 .map(response -> {
                     if (response.getErrorMessage() != null) {
-                        return ApiResult.error(response.getErrorMessage());
+                        return ApiResult.fail(response.getErrorMessage());
                     }
                     return ApiResult.success(response);
                 });
