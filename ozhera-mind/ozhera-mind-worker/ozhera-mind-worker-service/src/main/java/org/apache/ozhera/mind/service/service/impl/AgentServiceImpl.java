@@ -23,6 +23,7 @@ import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import com.github.benmanes.caffeine.cache.RemovalCause;
 import com.github.benmanes.caffeine.cache.Scheduler;
+import com.google.gson.Gson;
 import io.agentscope.core.ReActAgent;
 import io.agentscope.core.memory.autocontext.AutoContextConfig;
 import io.agentscope.core.memory.autocontext.AutoContextMemory;
@@ -33,7 +34,11 @@ import io.agentscope.core.model.Model;
 import io.agentscope.core.tool.Toolkit;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.ozhera.mind.api.dto.ChatRequest;
+import org.apache.ozhera.mind.service.hook.StreamingHook;
+import org.springframework.beans.factory.annotation.Autowired;
+import reactor.core.publisher.Sinks;
 import org.apache.ozhera.mind.api.dto.ChatResponse;
+import org.apache.ozhera.mind.service.context.UserContext;
 import org.apache.ozhera.mind.service.entity.ChatMessage;
 import org.apache.ozhera.mind.service.llm.entity.UserConfig;
 import org.apache.ozhera.mind.service.llm.provider.ModelProviderService;
@@ -114,6 +119,8 @@ public class AgentServiceImpl implements AgentService {
 
     @Resource
     private MemoryStateService memoryStateService;
+    @Autowired
+    private Gson gson;
 
     @PostConstruct
     public void init() {
@@ -150,6 +157,8 @@ public class AgentServiceImpl implements AgentService {
         String username = request.getUsername();
         String userMessage = request.getMessage();
 
+        // Set user context for Tool methods
+        UserContext.set(new UserContext.UserInfo(username, 0));
         try {
             ReActAgent agent = getOrCreateAgent(username);
 
@@ -181,6 +190,8 @@ public class AgentServiceImpl implements AgentService {
                     .errorMessage(e.getMessage())
                     .finished(true)
                     .build();
+        } finally {
+            UserContext.clear();
         }
     }
 
@@ -189,8 +200,17 @@ public class AgentServiceImpl implements AgentService {
         String username = request.getUsername();
         String userMessage = request.getMessage();
 
+        // Create sink for streaming
+        Sinks.Many<String> sink = Sinks.many().unicast().onBackpressureBuffer();
+        StringBuilder fullResponse = new StringBuilder();
+        StreamingHook streamingHook = new StreamingHook(sink, fullResponse);
+
+        // Capture user context for async execution
+        UserContext.UserInfo userInfo = new UserContext.UserInfo(username, 0);
+
         try {
-            ReActAgent agent = getOrCreateAgent(username);
+            // Create agent with streaming hook
+            ReActAgent agent = createStreamingAgent(username, streamingHook);
 
             Msg userMsg = Msg.builder()
                     .name("user")
@@ -198,14 +218,14 @@ public class AgentServiceImpl implements AgentService {
                     .content(TextBlock.builder().text(userMessage).build())
                     .build();
 
-            // Collect full response for saving
-            StringBuilder fullResponse = new StringBuilder();
-
-            return agent.call(List.of(userMsg))
-                    .flux()
-                    .map(msg -> msg != null && msg.getTextContent() != null ? msg.getTextContent() : "")
-                    .doOnNext(fullResponse::append)
-                    .doFinally(signalType -> {
+            // Execute agent call asynchronously
+            agent.call(List.of(userMsg))
+                    .doOnSubscribe(subscription -> {
+                        // Set user context when async execution starts
+                        UserContext.set(userInfo);
+                    })
+                    .doOnSuccess(msg -> {
+                        streamingHook.complete();
                         // Save to MySQL for frontend display
                         chatMessageService.saveMessage(username, "USER", userMessage);
                         String content = fullResponse.toString();
@@ -214,7 +234,18 @@ public class AgentServiceImpl implements AgentService {
                         }
                         // Save memory state to Redis
                         saveMemoryState(username);
-                    });
+                    })
+                    .doOnError(e -> {
+                        log.error("Stream chat failed for user: {}", username, e);
+                        streamingHook.error(e);
+                    })
+                    .doFinally(signalType -> {
+                        // Clear user context when done
+                        UserContext.clear();
+                    })
+                    .subscribe();
+
+            return sink.asFlux();
         } catch (Exception e) {
             log.error("Stream chat failed for user: {}", username, e);
             return Flux.just("{\"error\": \"" + e.getMessage() + "\"}");
@@ -287,6 +318,64 @@ public class AgentServiceImpl implements AgentService {
         memoryCache.put(username, memory);
 
         return agent;
+    }
+
+    /**
+     * Create a streaming-enabled agent with StreamingHook.
+     * This creates a temporary agent that shares memory with the cached one.
+     */
+    private ReActAgent createStreamingAgent(String username, StreamingHook streamingHook) {
+        // Get user config from database
+        UserConfig userConfig = userConfigService.getByUsername(username);
+        if (userConfig == null) {
+            throw new RuntimeException("User config not found. Please configure your API key and model settings first.");
+        }
+
+        // Create model using ModelProviderService
+        Model model = modelProviderService.createModel(userConfig);
+
+        // Get or create memory (shared with cached agent)
+        AutoContextMemory memory = memoryCache.getIfPresent(username);
+        if (memory == null) {
+            AutoContextConfig memoryConfig = AutoContextConfig.builder()
+                    .msgThreshold(msgThreshold)
+                    .maxToken(maxToken)
+                    .tokenRatio(tokenRatio)
+                    .lastKeep(lastKeep)
+                    .largePayloadThreshold(largePayloadThreshold)
+                    .build();
+
+            memory = new AutoContextMemory(memoryConfig, model);
+
+            // Try to restore memory state from Redis
+            boolean restored = memoryStateService.loadState(username, memory);
+
+            if (!restored) {
+                // No saved state, load history from MySQL
+                log.info("No memory state in Redis, loading history from MySQL for user: {}", username);
+                List<Msg> historyMessages = loadHistoryMessages(username);
+                for (Msg msg : historyMessages) {
+                    memory.addMessage(msg);
+                }
+            }
+
+            // Cache memory for future use
+            memoryCache.put(username, memory);
+        }
+
+        // Create toolkit and register tools
+        Toolkit toolkit = new Toolkit();
+        toolkit.registerTool(logToolService);
+        log.info("工具注册列表为：{}" , gson.toJson(toolkit.getToolSchemas()));
+        // Create temporary agent with streaming hook
+        return ReActAgent.builder()
+                .name("MindAgent")
+                .sysPrompt("你是一个hera日志的助手，可以根据用户的要求来执行对应的任务")
+                .model(model)
+                .toolkit(toolkit)
+                .memory(memory)
+                .hook(streamingHook)
+                .build();
     }
 
     /**

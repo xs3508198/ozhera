@@ -34,7 +34,7 @@ import java.util.Properties;
 @NacosPropertySource(dataId = "ozhera_mind_gateway_config", autoRefreshed = true)
 public class NacosConfiguration {
 
-    @Value("${nacos.config.addrs:127.0.0.1:8848}")
+    @Value("${nacos.config.address:127.0.0.1:8848}")
     private String nacosAddress;
 
     @Bean("nacosNamingService")

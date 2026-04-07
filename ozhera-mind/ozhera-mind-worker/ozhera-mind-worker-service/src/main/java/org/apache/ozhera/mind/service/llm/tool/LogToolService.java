@@ -27,6 +27,7 @@ import org.apache.ozhera.log.api.model.agent.StoreInfo;
 import org.apache.ozhera.log.api.model.agent.TailInfo;
 import org.apache.ozhera.log.api.model.agent.UserInfo;
 import org.apache.ozhera.log.api.service.LogAgentApiService;
+import org.apache.ozhera.mind.service.context.UserContext;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -43,14 +44,12 @@ public class LogToolService {
     @Tool(name = "createLogSpace", description = "Create a new log space. A space is a logical container for organizing log stores and tails.")
     public String createSpace(
             @ToolParam(name = "spaceName", description = "The name of the space to create", required = true) String spaceName,
-            @ToolParam(name = "spaceDescription", description = "A description of the space", required = true) String spaceDescription,
-            @ToolParam(name = "user", description = "The username of the operator", required = true) String user,
-            @ToolParam(name = "userType", description = "The user type (e.g., 0 for normal user, 1 for admin)", required = true) Integer userType) {
+            @ToolParam(name = "spaceDescription", description = "A description of the space", required = true) String spaceDescription) {
         log.info("Creating log space: {}", spaceName);
         SpaceInfo spaceInfo = new SpaceInfo();
         spaceInfo.setSpaceName(spaceName);
         spaceInfo.setSpaceDescription(spaceDescription);
-        spaceInfo.setUserInfo(buildUserInfo(user, userType, null));
+        spaceInfo.setUserInfo(getCurrentUserInfo());
         return logAgentApiService.createSpace(spaceInfo);
     }
 
@@ -58,27 +57,23 @@ public class LogToolService {
     public String updateSpace(
             @ToolParam(name = "spaceId", description = "The ID of the space to update", required = true) Long spaceId,
             @ToolParam(name = "spaceName", description = "The new name of the space", required = true) String spaceName,
-            @ToolParam(name = "spaceDescription", description = "The new description of the space", required = true) String spaceDescription,
-            @ToolParam(name = "user", description = "The username of the operator", required = true) String user,
-            @ToolParam(name = "userType", description = "The user type", required = true) Integer userType) {
+            @ToolParam(name = "spaceDescription", description = "The new description of the space", required = true) String spaceDescription) {
         log.info("Updating log space: {}", spaceId);
         SpaceInfo spaceInfo = new SpaceInfo();
         spaceInfo.setSpaceId(spaceId);
         spaceInfo.setSpaceName(spaceName);
         spaceInfo.setSpaceDescription(spaceDescription);
-        spaceInfo.setUserInfo(buildUserInfo(user, userType, null));
+        spaceInfo.setUserInfo(getCurrentUserInfo());
         return logAgentApiService.updateSpace(spaceInfo);
     }
 
     @Tool(name = "deleteLogSpace", description = "Delete a log space by its ID. This will also delete all stores and tails within the space.")
     public String deleteSpace(
-            @ToolParam(name = "spaceId", description = "The ID of the space to delete", required = true) Long spaceId,
-            @ToolParam(name = "user", description = "The username of the operator", required = true) String user,
-            @ToolParam(name = "userType", description = "The user type", required = true) Integer userType) {
+            @ToolParam(name = "spaceId", description = "The ID of the space to delete", required = true) Long spaceId) {
         log.info("Deleting log space: {}", spaceId);
         SpaceInfo spaceInfo = new SpaceInfo();
         spaceInfo.setSpaceId(spaceId);
-        spaceInfo.setUserInfo(buildUserInfo(user, userType, null));
+        spaceInfo.setUserInfo(getCurrentUserInfo());
         return logAgentApiService.deleteSpace(spaceInfo);
     }
 
@@ -100,13 +95,11 @@ public class LogToolService {
 
     @Tool(name = "getLogStoreById", description = "Get detailed information about a log store by its ID.")
     public String getStoreInfoById(
-            @ToolParam(name = "storeId", description = "The ID of the store to retrieve", required = true) Long storeId,
-            @ToolParam(name = "user", description = "The username of the operator", required = true) String user,
-            @ToolParam(name = "userType", description = "The user type", required = true) Integer userType) {
+            @ToolParam(name = "storeId", description = "The ID of the store to retrieve", required = true) Long storeId) {
         log.info("Getting log store by ID: {}", storeId);
         StoreInfo storeInfo = new StoreInfo();
         storeInfo.setStoreId(storeId);
-        storeInfo.setUserInfo(buildUserInfo(user, userType, null));
+        storeInfo.setUserInfo(getCurrentUserInfo());
         return logAgentApiService.getStoreInfoById(storeInfo);
     }
 
@@ -114,8 +107,6 @@ public class LogToolService {
     public String createStore(
             @ToolParam(name = "spaceId", description = "The ID of the space where the store will be created", required = true) Long spaceId,
             @ToolParam(name = "storeName", description = "The name of the store", required = true) String storeName,
-            @ToolParam(name = "user", description = "The username of the operator", required = true) String user,
-            @ToolParam(name = "userType", description = "The user type", required = true) Integer userType,
             @ToolParam(name = "machineRoom", description = "The machine room ID", required = false) Integer machineRoom,
             @ToolParam(name = "logType", description = "The log type", required = false) String logType,
             @ToolParam(name = "storePeriod", description = "The storage period in days (default 180)", required = false) Integer storePeriod,
@@ -124,7 +115,7 @@ public class LogToolService {
         StoreInfo storeInfo = new StoreInfo();
         storeInfo.setSpaceId(spaceId);
         storeInfo.setStoreName(storeName);
-        storeInfo.setUserInfo(buildUserInfo(user, userType, null));
+        storeInfo.setUserInfo(getCurrentUserInfo());
         if (machineRoom != null) {
             storeInfo.setMachineRoom(machineRoom);
         }
@@ -145,8 +136,6 @@ public class LogToolService {
             @ToolParam(name = "storeId", description = "The ID of the store to update", required = true) Long storeId,
             @ToolParam(name = "spaceId", description = "The space ID", required = true) Long spaceId,
             @ToolParam(name = "storeName", description = "The new name of the store", required = true) String storeName,
-            @ToolParam(name = "user", description = "The username of the operator", required = true) String user,
-            @ToolParam(name = "userType", description = "The user type", required = true) Integer userType,
             @ToolParam(name = "storePeriod", description = "The storage period in days", required = false) Integer storePeriod,
             @ToolParam(name = "shardCnt", description = "The shard count", required = false) Integer shardCnt) {
         log.info("Updating log store: {}", storeId);
@@ -154,7 +143,7 @@ public class LogToolService {
         storeInfo.setStoreId(storeId);
         storeInfo.setSpaceId(spaceId);
         storeInfo.setStoreName(storeName);
-        storeInfo.setUserInfo(buildUserInfo(user, userType, null));
+        storeInfo.setUserInfo(getCurrentUserInfo());
         if (storePeriod != null) {
             storeInfo.setStorePeriod(storePeriod);
         }
@@ -166,13 +155,11 @@ public class LogToolService {
 
     @Tool(name = "deleteLogStore", description = "Delete a log store by its ID. This will also delete all tails within the store.")
     public String deleteStore(
-            @ToolParam(name = "storeId", description = "The ID of the store to delete", required = true) Long storeId,
-            @ToolParam(name = "user", description = "The username of the operator", required = true) String user,
-            @ToolParam(name = "userType", description = "The user type", required = true) Integer userType) {
+            @ToolParam(name = "storeId", description = "The ID of the store to delete", required = true) Long storeId) {
         log.info("Deleting log store: {}", storeId);
         StoreInfo storeInfo = new StoreInfo();
         storeInfo.setStoreId(storeId);
-        storeInfo.setUserInfo(buildUserInfo(user, userType, null));
+        storeInfo.setUserInfo(getCurrentUserInfo());
         return logAgentApiService.deleteStore(storeInfo);
     }
 
@@ -184,8 +171,6 @@ public class LogToolService {
             @ToolParam(name = "storeId", description = "The store ID where logs will be stored", required = true) Long storeId,
             @ToolParam(name = "tail", description = "The tail name (identifier for this log collection)", required = true) String tail,
             @ToolParam(name = "logPath", description = "The log file path to collect (e.g., /var/log/app/*.log)", required = true) String logPath,
-            @ToolParam(name = "user", description = "The username of the operator", required = true) String user,
-            @ToolParam(name = "userType", description = "The user type", required = true) Integer userType,
             @ToolParam(name = "appId", description = "The application ID", required = false) Long appId,
             @ToolParam(name = "appName", description = "The application name", required = false) String appName,
             @ToolParam(name = "envId", description = "The environment ID", required = false) Long envId,
@@ -199,7 +184,7 @@ public class LogToolService {
         tailInfo.setStoreId(storeId);
         tailInfo.setTail(tail);
         tailInfo.setLogPath(logPath);
-        tailInfo.setUserInfo(buildUserInfo(user, userType, null));
+        tailInfo.setUserInfo(getCurrentUserInfo());
         if (appId != null) {
             tailInfo.setAppId(appId);
         }
@@ -231,8 +216,6 @@ public class LogToolService {
             @ToolParam(name = "storeId", description = "The store ID", required = true) Long storeId,
             @ToolParam(name = "tail", description = "The tail name", required = true) String tail,
             @ToolParam(name = "logPath", description = "The log file path", required = true) String logPath,
-            @ToolParam(name = "user", description = "The username of the operator", required = true) String user,
-            @ToolParam(name = "userType", description = "The user type", required = true) Integer userType,
             @ToolParam(name = "appId", description = "The application ID", required = false) Long appId,
             @ToolParam(name = "appName", description = "The application name", required = false) String appName,
             @ToolParam(name = "envId", description = "The environment ID", required = false) Long envId,
@@ -247,7 +230,7 @@ public class LogToolService {
         tailInfo.setStoreId(storeId);
         tailInfo.setTail(tail);
         tailInfo.setLogPath(logPath);
-        tailInfo.setUserInfo(buildUserInfo(user, userType, null));
+        tailInfo.setUserInfo(getCurrentUserInfo());
         if (appId != null) {
             tailInfo.setAppId(appId);
         }
@@ -274,13 +257,11 @@ public class LogToolService {
 
     @Tool(name = "deleteLogTail", description = "Delete a log tail by its ID.")
     public String deleteTail(
-            @ToolParam(name = "id", description = "The tail ID to delete", required = true) Long id,
-            @ToolParam(name = "user", description = "The username of the operator", required = true) String user,
-            @ToolParam(name = "userType", description = "The user type", required = true) Integer userType) {
+            @ToolParam(name = "id", description = "The tail ID to delete", required = true) Long id) {
         log.info("Deleting log tail: {}", id);
         TailInfo tailInfo = new TailInfo();
         tailInfo.setId(id);
-        tailInfo.setUserInfo(buildUserInfo(user, userType, null));
+        tailInfo.setUserInfo(getCurrentUserInfo());
         return logAgentApiService.deleteTail(tailInfo);
     }
 
@@ -293,11 +274,22 @@ public class LogToolService {
 
     // ==================== Helper Methods ====================
 
+    /**
+     * Get current user info from ThreadLocal context.
+     */
+    private UserInfo getCurrentUserInfo() {
+        UserContext.UserInfo contextUser = UserContext.get();
+        if (contextUser == null) {
+            log.warn("User context not found, using default values");
+            return buildUserInfo("unknown", 0, null);
+        }
+        return buildUserInfo(contextUser.getUsername(), contextUser.getUserType(), null);
+    }
+
     private UserInfo buildUserInfo(String user, Integer userType, String zone) {
         UserInfo userInfo = new UserInfo();
-        userInfo.setUser(user);
-        userInfo.setUserType(userType);
-        userInfo.setZone(zone);
+//        userInfo.setUser(user);
+        userInfo.setUser("xueshan");
         return userInfo;
     }
 }

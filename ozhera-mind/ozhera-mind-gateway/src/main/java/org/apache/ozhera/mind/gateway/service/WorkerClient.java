@@ -70,9 +70,9 @@ public class WorkerClient {
         return webClient.post()
                 .uri(workerUrl + "/worker/agent/chat/stream")
                 .contentType(MediaType.APPLICATION_JSON)
+                .accept(MediaType.TEXT_EVENT_STREAM)
                 .bodyValue(request)
-                .retrieve()
-                .bodyToFlux(String.class)
+                .exchangeToFlux(response -> response.bodyToFlux(String.class))
                 .timeout(Duration.ofMinutes(5))
                 .doOnError(e -> log.error("Stream chat failed on worker: {}", workerUrl, e));
     }
