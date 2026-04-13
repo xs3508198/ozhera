@@ -21,7 +21,7 @@ package org.apache.ozhera.mind.server.controller;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.ozhera.mind.api.dto.ChatRequest;
 import org.apache.ozhera.mind.api.dto.ChatResponse;
-import org.apache.ozhera.mind.service.service.AgentService;
+import org.apache.ozhera.mind.service.swarm.SwarmAgentService;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -41,7 +41,7 @@ import javax.annotation.Resource;
 public class WorkerAgentController {
 
     @Resource
-    private AgentService agentService;
+    private SwarmAgentService swarmAgentService;
 
     /**
      * Chat with agent (non-streaming).
@@ -51,7 +51,7 @@ public class WorkerAgentController {
     public ChatResponse chat(@RequestBody ChatRequest request) {
         log.debug("Chat request for user: {}", request.getUsername());
         try {
-            return agentService.chat(request);
+            return swarmAgentService.chat(request);
         } catch (Exception e) {
             log.error("Chat failed", e);
             return ChatResponse.builder()
@@ -68,7 +68,7 @@ public class WorkerAgentController {
     @PostMapping(value = "/chat/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     public Flux<String> chatStream(@RequestBody ChatRequest request) {
         log.debug("Stream chat request for user: {}", request.getUsername());
-        return agentService.chatStream(request)
+        return swarmAgentService.chatStream(request)
                 .map(content -> "data: " + content + "\n\n")
                 .onErrorResume(e -> {
                     log.error("Stream chat failed", e);

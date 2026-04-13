@@ -370,7 +370,7 @@ public class AgentServiceImpl implements AgentService {
         // Create temporary agent with streaming hook
         return ReActAgent.builder()
                 .name("MindAgent")
-                .sysPrompt("你是一个hera日志的助手，可以根据用户的要求来执行对应的任务")
+                .sysPrompt("You are a Hera Log Assistant. You can help users manage log spaces, stores, and tails. Execute log-related tasks based on user requests.")
                 .model(model)
                 .toolkit(toolkit)
                 .memory(memory)
