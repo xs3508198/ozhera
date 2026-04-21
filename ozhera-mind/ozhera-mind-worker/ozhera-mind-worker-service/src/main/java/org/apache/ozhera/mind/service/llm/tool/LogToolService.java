@@ -67,15 +67,7 @@ public class LogToolService {
         return logAgentApiService.updateSpace(spaceInfo);
     }
 
-    @Tool(name = "deleteLogSpace", description = "Delete a log space by its ID. This will also delete all stores and tails within the space.")
-    public String deleteSpace(
-            @ToolParam(name = "spaceId", description = "The ID of the space to delete", required = true) Long spaceId) {
-        log.info("Deleting log space: {}", spaceId);
-        SpaceInfo spaceInfo = new SpaceInfo();
-        spaceInfo.setSpaceId(spaceId);
-        spaceInfo.setUserInfo(getCurrentUserInfo());
-        return logAgentApiService.deleteSpace(spaceInfo);
-    }
+    // deleteLogSpace moved to DeleteLogSpaceTool (request-scoped, with Human-in-the-Loop confirmation)
 
     @Tool(name = "getLogSpaceById", description = "Get detailed information about a log space by its ID.")
     public String getSpaceById(

@@ -87,6 +87,11 @@ public class CommonAgent implements HeraAgent {
     }
 
     @Override
+    public List<Object> getToolObjects() {
+        return List.of(handoffTool);
+    }
+
+    @Override
     public List<String> getHandoffTargets() {
         return List.of("LogAgent", "MonitorAgent");
     }

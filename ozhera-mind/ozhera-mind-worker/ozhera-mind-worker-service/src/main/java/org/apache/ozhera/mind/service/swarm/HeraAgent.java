@@ -61,6 +61,14 @@ public interface HeraAgent {
     Toolkit getToolkit();
 
     /**
+     * Get list of tool objects for this agent.
+     * Used for creating toolkit with request-scoped tools.
+     *
+     * @return list of tool objects
+     */
+    List<Object> getToolObjects();
+
+    /**
      * Get list of agents this agent can handoff to.
      *
      * @return list of target agent names
@@ -76,6 +84,36 @@ public interface HeraAgent {
      * @return the created agent
      */
     ReActAgent createReActAgent(Model model, AutoContextMemory memory, Hook hook);
+
+    /**
+     * Create ReActAgent with request-scoped tools.
+     * Request-scoped tools are created per request, with FluxSink injected.
+     *
+     * @param model               the LLM model
+     * @param memory              the shared memory
+     * @param hook                the streaming hook
+     * @param requestScopedTools  tools created per request (e.g., DeleteLogSpaceTool)
+     * @return the created agent
+     */
+    default ReActAgent createReActAgentWithTools(Model model, AutoContextMemory memory,
+                                                  Hook hook, List<Object> requestScopedTools) {
+        Toolkit toolkit = new Toolkit();
+        for (Object tool : getToolObjects()) {
+            toolkit.registerTool(tool);
+        }
+        for (Object tool : requestScopedTools) {
+            toolkit.registerTool(tool);
+        }
+
+        return ReActAgent.builder()
+                .name(getName())
+                .sysPrompt(getSystemPrompt())
+                .model(model)
+                .toolkit(toolkit)
+                .memory(memory)
+                .hook(hook)
+                .build();
+    }
 
     /**
      * Whether this agent is the default entry point.

@@ -16,24 +16,20 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.ozhera.mind.server;
+package org.apache.ozhera.mind.service.confirmation;
 
-import org.mybatis.spring.annotation.MapperScan;
-import org.springframework.boot.SpringApplication;
-import org.springframework.boot.autoconfigure.SpringBootApplication;
-import org.springframework.context.annotation.ComponentScan;
-import org.springframework.scheduling.annotation.EnableAsync;
-import org.springframework.scheduling.annotation.EnableScheduling;
+import lombok.Builder;
+import lombok.Data;
 
-@SpringBootApplication
-@ComponentScan(basePackages = {"org.apache.ozhera.mind"})
-@MapperScan("org.apache.ozhera.mind.service.dao.mapper")
-@EnableAsync
-@EnableScheduling
-public class OzheraMindServerApplication {
+import java.util.Map;
 
-    public static void main(String[] args) {
-        SpringApplication.run(OzheraMindServerApplication.class, args);
-    }
-
+@Data
+@Builder
+public class ConfirmationMessage {
+    private String type;
+    private String token;
+    private String operation;
+    private String message;
+    private Map<String, Object> detail;
+    private long expireTime;
 }

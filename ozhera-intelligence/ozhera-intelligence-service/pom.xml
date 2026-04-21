@@ -36,17 +36,17 @@
     </properties>
 
     <dependencies>
-        <dependency>
-            <groupId>run.mone</groupId>
-            <artifactId>mcp-miline</artifactId>
-            <version>1.6.1-jdk21-SNAPSHOT</version>
-            <exclusions>
-                <exclusion>
-                    <artifactId>spring-webmvc</artifactId>
-                    <groupId>org.springframework</groupId>
-                </exclusion>
-            </exclusions>
-        </dependency>
+<!--        <dependency>-->
+<!--            <groupId>run.mone</groupId>-->
+<!--            <artifactId>mcp-miline</artifactId>-->
+<!--            <version>1.6.1-jdk21-SNAPSHOT</version>-->
+<!--            <exclusions>-->
+<!--                <exclusion>-->
+<!--                    <artifactId>spring-webmvc</artifactId>-->
+<!--                    <groupId>org.springframework</groupId>-->
+<!--                </exclusion>-->
+<!--            </exclusions>-->
+<!--        </dependency>-->
         <dependency>
             <groupId>run.mone</groupId>
             <artifactId>mcp-hera-analysis</artifactId>
@@ -55,6 +55,10 @@
                 <exclusion>
                     <artifactId>spring-webmvc</artifactId>
                     <groupId>org.springframework</groupId>
+                </exclusion>
+                <exclusion>
+                    <groupId>run.mone</groupId>
+                    <artifactId>mcp-chat</artifactId>
                 </exclusion>
             </exclusions>
         </dependency>

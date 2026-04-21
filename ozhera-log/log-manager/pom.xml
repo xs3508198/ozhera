@@ -368,4 +368,17 @@ http://www.apache.org/licenses/LICENSE-2.0
 
     </profiles>
 
+    <distributionManagement>
+        <repository>
+            <id>central</id>
+            <name>maven-release-virtual</name>
+            <url>https://pkgs.d.xiaomi.net/artifactory/maven-release-virtual</url>
+        </repository>
+        <snapshotRepository>
+            <id>snapshots</id>
+            <name>snapshots</name>
+            <url>https://pkgs.d.xiaomi.net/artifactory/snapshots</url>
+        </snapshotRepository>
+    </distributionManagement>
+
 </project>

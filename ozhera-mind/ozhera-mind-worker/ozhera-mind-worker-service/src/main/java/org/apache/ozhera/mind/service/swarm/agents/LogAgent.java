@@ -90,6 +90,11 @@ public class LogAgent implements HeraAgent {
     }
 
     @Override
+    public List<Object> getToolObjects() {
+        return List.of(logToolService, handoffTool);
+    }
+
+    @Override
     public List<String> getHandoffTargets() {
         return List.of("CommonAgent", "MonitorAgent");
     }

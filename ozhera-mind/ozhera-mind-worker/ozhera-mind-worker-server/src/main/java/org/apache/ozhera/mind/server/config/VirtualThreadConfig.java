@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.ozhera.mind.service.concurrency;
+package org.apache.ozhera.mind.server.config;
 
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.web.embedded.tomcat.TomcatProtocolHandlerCustomizer;

@@ -25,17 +25,23 @@ import io.agentscope.core.message.MsgRole;
 import io.agentscope.core.message.TextBlock;
 import io.agentscope.core.model.Model;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.dubbo.config.annotation.DubboReference;
+import org.apache.ozhera.log.api.service.LogAgentApiService;
 import org.apache.ozhera.mind.service.concurrency.LLMRateLimiter;
+import org.apache.ozhera.mind.service.confirmation.ConfirmationManager;
 import org.apache.ozhera.mind.service.context.UserContext;
 import org.apache.ozhera.mind.service.hook.StreamingHook;
 import org.apache.ozhera.mind.service.llm.entity.UserConfig;
 import org.apache.ozhera.mind.service.llm.provider.ModelProviderService;
+import org.apache.ozhera.mind.service.llm.tool.DeleteLogSpaceTool;
 import org.apache.ozhera.mind.service.service.UserConfigService;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
+import reactor.core.publisher.FluxSink;
 import reactor.core.publisher.Sinks;
 
 import javax.annotation.Resource;
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -65,6 +71,12 @@ public class SwarmExecutor {
     @Resource
     private LLMRateLimiter llmRateLimiter;
 
+    @Resource
+    private ConfirmationManager confirmationManager;
+
+    @DubboReference(interfaceClass = LogAgentApiService.class, group = "${log.agent.group}", check = false)
+    private LogAgentApiService logAgentApiService;
+
     /**
      * Execute agent with streaming response.
      */
@@ -76,12 +88,22 @@ public class SwarmExecutor {
 
         return Flux.create(sink -> {
             try {
-                executeInternal(username, userMessage, session, memory, sink, new HashSet<>(), 0);
+                List<Object> requestScopedTools = createRequestScopedTools(sink);
+                executeInternal(username, userMessage, session, memory, sink, requestScopedTools, new HashSet<>(), 0);
             } catch (Exception e) {
                 log.error("Execution failed for user: {}", username, e);
                 sink.error(e);
             }
         });
+    }
+
+    /**
+     * Create request-scoped tools with FluxSink injected.
+     */
+    private List<Object> createRequestScopedTools(FluxSink<String> sink) {
+        List<Object> tools = new ArrayList<>();
+        tools.add(new DeleteLogSpaceTool(sink, confirmationManager, logAgentApiService));
+        return tools;
     }
 
     /**
@@ -93,6 +115,7 @@ public class SwarmExecutor {
             SwarmSession session,
             AutoContextMemory memory,
             reactor.core.publisher.FluxSink<String> sink,
+            List<Object> requestScopedTools,
             Set<String> visitedAgents,
             int depth) {
 
@@ -133,8 +156,8 @@ public class SwarmExecutor {
         Sinks.Many<String> agentSink = Sinks.many().unicast().onBackpressureBuffer();
         StreamingHook hook = new StreamingHook(agentSink, fullResponse);
 
-        // Create agent
-        ReActAgent agent = agentDef.createReActAgent(model, memory, hook);
+        // Create agent with request-scoped tools
+        ReActAgent agent = agentDef.createReActAgentWithTools(model, memory, hook, requestScopedTools);
 
         // Build user message
         Msg userMsg = Msg.builder()
@@ -168,7 +191,7 @@ public class SwarmExecutor {
                             sessionService.saveSession(username, session);
 
                             // Continue with target agent
-                            executeInternal(username, userMessage, session, memory, sink, visitedAgents, depth + 1);
+                            executeInternal(username, userMessage, session, memory, sink, requestScopedTools, visitedAgents, depth + 1);
                         } else {
                             sink.complete();
                         }
