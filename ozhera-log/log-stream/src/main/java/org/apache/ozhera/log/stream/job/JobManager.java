@@ -113,12 +113,15 @@ public class JobManager {
 
     private void startConsumerJob(String type, String ak, String sk, String clusterInfo, LogtailConfig
             logtailConfig, SinkConfig sinkConfig, Long logSpaceId) {
+        log.info("[STREAM-DEBUG] ========== startConsumerJob ==========");
         try {
             SinkJobConfig sinkJobConfig = buildSinkJobConfig(type, ak, sk, clusterInfo, logtailConfig, sinkConfig, logSpaceId);
             log.warn("startConsumerJob spaceId:{}, storeId:{}, tailId:{}", sinkJobConfig.getLogSpaceId(), sinkJobConfig.getLogStoreId(), sinkJobConfig.getLogTailId());
 
             String sinkProviderBean = sinkJobConfig.getMqType() + LogStreamConstants.sinkJobProviderBeanSuffix;
+            log.info("[STREAM-DEBUG] looking for sinkJobProvider bean:{}", sinkProviderBean);
             SinkJobProvider sinkJobProvider = Ioc.ins().getBean(sinkProviderBean);
+            log.info("[STREAM-DEBUG] sinkJobProvider found:{}", sinkJobProvider != null ? sinkJobProvider.getClass().getSimpleName() : "null");
 
             if (StringUtils.equalsIgnoreCase(SinkJobEnum.NORMAL_JOB.name(), sinkJobType)) {
                 sinkJobConfig.setJobType(SinkJobEnum.NORMAL_JOB.name());
@@ -147,9 +150,13 @@ public class JobManager {
     }
 
     private void startSinkJob(SinkJob sinkJob, SinkJobEnum jobEnum, Long tailId) throws Exception {
+        log.info("[STREAM-DEBUG] startSinkJob tailId:{}, jobType:{}, sinkJob:{}", tailId, jobEnum, sinkJob != null ? sinkJob.getClass().getSimpleName() : "null");
         if (sinkJob != null && sinkJob.start()) {
+            log.info("[STREAM-DEBUG] sinkJob started successfully, tailId:{}, jobType:{}", tailId, jobEnum);
             Map<SinkJobEnum, SinkJob> jobMap = jobs.computeIfAbsent(tailId, k -> new HashMap<>());
             jobMap.put(jobEnum, sinkJob);
+        } else {
+            log.warn("[STREAM-DEBUG] sinkJob start failed or sinkJob is null, tailId:{}", tailId);
         }
     }
 
@@ -186,15 +193,20 @@ public class JobManager {
     }
 
     public void startJob(LogtailConfig logtailConfig, SinkConfig sinkConfig, Long logSpaceId) {
+        log.info("[STREAM-DEBUG] ========== JobManager.startJob ==========");
+        log.info("[STREAM-DEBUG] spaceId:{}, storeId:{}, tailId:{}", logSpaceId, sinkConfig.getLogstoreId(), logtailConfig.getLogtailId());
         try {
             String ak = logtailConfig.getAk();
             String sk = logtailConfig.getSk();
             String clusterInfo = logtailConfig.getClusterInfo();
             String type = logtailConfig.getType();
+            log.info("[STREAM-DEBUG] mqType:{}, clusterInfo:{}, topic:{}, tag:{}", type, clusterInfo, logtailConfig.getTopic(), logtailConfig.getTag());
             if (StringUtils.isEmpty(clusterInfo) || StringUtils.isEmpty(logtailConfig.getTopic())) {
+                log.error("[STREAM-DEBUG] start job failed - clusterInfo or topic is empty");
                 log.info("start job error,ak or sk or logTailConfig null,ak:{},sk:{},logTailConfig:{}", ak, sk, objectMapper.writeValueAsString(logtailConfig));
                 return;
             }
+            log.info("[STREAM-DEBUG] calling startConsumerJob...");
             startConsumerJob(type, ak, sk, clusterInfo, logtailConfig, sinkConfig, logSpaceId);
         } catch (Exception e) {
             log.error(String.format("start job err,logTailConfig:%s,esIndex:%s", logtailConfig, sinkConfig.getEsIndex()), e);

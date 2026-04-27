@@ -59,17 +59,21 @@ public class RocketMqSinkJob implements SinkJob {
         String tag = rocketmqConfig.getTag();
         try {
             consumer.subscribe(topicName, tag);
+            log.info("[STREAM-DEBUG] consumer subscribed successfully");
             log.info("[RmqSinkJob.start] job subscribed topic [topic:{},tag:{}]", topicName, tag);
             consumer.registerMessageListener((MessageListenerOrderly) (list, consumeOrderlyContext) -> {
                 String time = getTime();
+                log.debug("[STREAM-DEBUG] received {} messages from topic:{}", list.size(), topicName);
                 for (MessageExt messageExt : list) {
                     Map<String, Object> m = null;
                     String msg = new String(messageExt.getBody());
+                    log.debug("[STREAM-DEBUG] processing message, msgId:{}, body length:{}", messageExt.getMsgId(), msg.length());
                     handleMessage.handleMessage(MQSourceEnum.ROCKETMQ.getName(), msg, time);
                 }
                 return ConsumeOrderlyStatus.SUCCESS;
             });
             consumer.start();
+            log.info("[STREAM-DEBUG] consumer started successfully, topic:{}", topicName);
             return true;
         } catch (Throwable e) {
             log.error(String.format("[RmqSinkJob.start] logStream rockerMq start error,topic:%s,tag:%s", topicName, tag), new RuntimeException(e));

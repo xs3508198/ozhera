@@ -110,6 +110,7 @@ public class LogDataTransfer {
 
             messagePostProcessing.postProcessing(sinkJobConfig, msg);
         } catch (Exception e) {
+            log.error("[STREAM-DEBUG] handleMessage error, tailId:{}, msg:{}", sinkJobConfig.getLogTailId(), msg, e);
             log.error(jobType.name() + " parse and send error", e);
             throw new RuntimeException(String.format("handleMessage error,msg:%s", msg), e);
         }

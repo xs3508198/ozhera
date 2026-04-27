@@ -246,10 +246,10 @@ public class MilogConfigNacosServiceImpl implements MilogConfigNacosService {
         MilogSpaceData spaceData = dealSpaceConfigByRule(motorRoomEn, spaceId, storeId, tailId, type, changeType);
         getSpaceConfigNacosPublisher(motorRoomEn).publish(spaceId, spaceData);
 
-        // Publish split configs
-        if (spaceData != null) {
-            publishSplitSpaceData(motorRoomEn, spaceId, spaceData);
-        }
+//        // Publish split configs
+//        if (spaceData != null) {
+//            publishSplitSpaceData(motorRoomEn, spaceId, spaceData);
+//        }
     }
 
     private void publishSplitSpaceData(String motorRoomEn, Long spaceId, MilogSpaceData spaceData) {

@@ -285,15 +285,22 @@ public class MilogConfigListener {
     }
 
     private void startTailPer(SinkConfig sinkConfig, LogtailConfig logTailConfig, Long logSpaceId) {
+        log.info("[STREAM-DEBUG] ========== Starting tail ==========");
+        log.info("[STREAM-DEBUG] spaceId:{}, storeId:{}, tailId:{}", logSpaceId, sinkConfig.getLogstoreId(), logTailConfig != null ? logTailConfig.getLogtailId() : null);
         if (null == logSpaceId || null == logTailConfig || null == logTailConfig.getLogtailId()) {
+            log.error("[STREAM-DEBUG] start tail failed - null params");
             log.error("logSpaceId or logTailConfig or logTailId is null,storeId:{},tailId:{},logSpaceId:{}", sinkConfig.getLogstoreId(), logTailConfig.getLogtailId(), spaceId);
             return;
         }
+        log.info("[STREAM-DEBUG] tailConfig: topic={}, tag={}, consumerGroup={}", logTailConfig.getTopic(), logTailConfig.getTag(), logTailConfig.getConsumerGroup());
+        log.info("[STREAM-DEBUG] sinkConfig: esIndex={}, storageType={}", sinkConfig.getEsIndex(), sinkConfig.getStorageType());
         Boolean isStart = streamCommonExtension.preCheckTaskExecution(sinkConfig, logTailConfig, logSpaceId);
         if (!isStart) {
+            log.warn("[STREAM-DEBUG] preCheckTaskExecution returned false, skip this tail");
             log.warn("preCheckTaskExecution error,preCheckTaskExecution is false,LogTailConfig:{}", gson.toJson(logTailConfig));
             return;
         }
+        log.info("[STREAM-DEBUG] preCheck passed, calling jobManager.startJob...");
         log.info("Initialize the new task, tail configuration:{},index:{},cluster information：{},spaceId:{}", gson.toJson(logTailConfig), sinkConfig.getEsIndex(), gson.toJson(sinkConfig.getEsInfo()), logSpaceId);
         jobManager.startJob(logTailConfig, sinkConfig, logSpaceId);
         oldLogTailConfigMap.put(logTailConfig.getLogtailId(), logTailConfig);
@@ -312,7 +319,11 @@ public class MilogConfigListener {
             @Override
             public void receiveConfigInfo(String dataValue) {
                 try {
+                    log.info("[STREAM-DEBUG] ========== Nacos config received ==========");
+                    log.info("[STREAM-DEBUG] dataId:{}, spaceId:{}", dataId, milogSpaceData.getMilogSpaceId());
+                    log.info("[STREAM-DEBUG] config content:{}", dataValue);
                     if (StringUtils.equals(originConfig, dataValue)) {
+                        log.info("[STREAM-DEBUG] config unchanged, skip");
                         return;
                     }
                     log.info("listen tail received a configuration request:{},origin config:{}", dataValue, originConfig);

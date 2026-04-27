@@ -132,16 +132,19 @@ public class ConfigManager {
                                 log.info("[ConfigManager.initStream] added log config listener for spaceId:{},dataId:{}", spaceId, dataId);
                             }
                         } else {
-                            if (StringUtils.isNotEmpty(configSuffix)) {
-                                log.info("[ConfigManager.initStream] config not found for dataId:{}, skipping", dataId);
-                            }
+                            log.warn("[STREAM-DEBUG] spaceData is empty for dataId:{}", dataId);
+                            log.info("[ConfigManager.initStream] config not found for dataId:{}, skipping", dataId);
+
                         }
                     }
                 } else {
+                    log.info("[STREAM-DEBUG] uniqueMark:{} not found in config", uniqueMark);
                     log.info("server start current not contain space config,uniqueMark:{}", uniqueMark);
                 }
             }
+            log.info("[STREAM-DEBUG] initializeStreamConfig completed, total listeners:{}", listeners.size());
         } catch (Exception e) {
+            log.error("[STREAM-DEBUG] initializeStreamConfig error", e);
             log.error("[ConfigManager.initStream] initStream exec err", e);
         }
     }
@@ -316,10 +319,9 @@ public class ConfigManager {
                     MilogSpaceData milogSpaceData = getMilogSpaceData(dataId);
 
                     if (milogSpaceData == null || milogSpaceData.getMilogSpaceId() == null) {
-                        if (StringUtils.isNotEmpty(configSuffix)) {
-                            log.info("startNewListenerAndJob config not found for dataId:{}, skipping", dataId);
-                            return;
-                        }
+
+                        log.info("startNewListenerAndJob config not found for dataId:{}, skipping", dataId);
+
                     }
 
                     // Listen configuration
