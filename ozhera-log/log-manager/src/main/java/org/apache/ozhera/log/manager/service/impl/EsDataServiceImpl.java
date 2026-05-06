@@ -86,7 +86,11 @@ import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.io.File;
 import java.util.*;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Semaphore;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 import static org.apache.ozhera.log.common.Constant.DEFAULT_OPERATOR;
@@ -130,9 +134,44 @@ public class EsDataServiceImpl implements EsDataService, LogDataService, EsDataB
 
     private CommonExtensionService commonExtensionService;
 
+    private static final long TEMP_FILE_MAX_AGE_MS = 2 * 60 * 60 * 1000L;
+
     public void init() {
         commonExtensionService = CommonExtensionServiceFactory.getCommonExtensionService();
+        Executors.newSingleThreadScheduledExecutor().scheduleAtFixedRate(
+                this::cleanPoiTempFiles, 10, 30, TimeUnit.MINUTES);
     }
+
+    private void cleanPoiTempFiles() {
+        try {
+            File poiDir = new File(System.getProperty("java.io.tmpdir"), "poifiles");
+            if (!poiDir.exists() || !poiDir.isDirectory()) {
+                return;
+            }
+            File[] files = poiDir.listFiles();
+            if (files == null) {
+                return;
+            }
+            long now = System.currentTimeMillis();
+            int cleaned = 0;
+            for (File file : files) {
+                if (file.isFile() && file.getName().startsWith("poi-sxssf-sheet")
+                        && now - file.lastModified() > TEMP_FILE_MAX_AGE_MS) {
+                    if (file.delete()) {
+                        cleaned++;
+                    }
+                }
+            }
+            if (cleaned > 0) {
+                log.info("Cleaned {} stale POI temp files from {}", cleaned, poiDir.getAbsolutePath());
+            }
+        } catch (Exception e) {
+            log.error("Error cleaning POI temp files", e);
+        }
+    }
+
+    private static final int MAX_CONCURRENT_EXPORTS = 3;
+    private static final Semaphore EXPORT_SEMAPHORE = new Semaphore(MAX_CONCURRENT_EXPORTS);
 
     private Set<String> noHighLightSet = new HashSet<>();
 
@@ -746,20 +785,38 @@ public class EsDataServiceImpl implements EsDataService, LogDataService, EsDataB
 
     public void logExport(LogQuery logQuery) throws Exception {
         log.info("Log query, logExport, logQuery:{}", GSON.toJson(logQuery));
-        // Generate Excel
-        final int rowsPerSheet = 5000; //each sheet is fixed at 5000 rows
-        final int maxPage = 100; //max pages, the upper limit of the number of rows: 5000*100
+
+        if (!EXPORT_SEMAPHORE.tryAcquire()) {
+            log.warn("logExport rejected: too many concurrent exports (max={})", MAX_CONCURRENT_EXPORTS);
+            throw new MilogManageException("Too many concurrent export requests. Please try again later.");
+        }
+
+        final int rowsPerSheet = 5000;
+        final int maxPage = 10;
         int page = 1;
         SXSSFWorkbook workbook = new SXSSFWorkbook();
+        workbook.setCompressTempFiles(true);
         try {
             String title = generateTitle(logQuery);
             List<String> headers = null;
             Object[] lastSortValues = null;
             logQuery.setIsDownload(true);
+
+            CellStyle titleStyle = workbook.createCellStyle();
+            titleStyle.setAlignment((short) 2);
+            titleStyle.setVerticalAlignment((short) 1);
+            Font titleFont = workbook.createFont();
+            titleFont.setBoldweight((short) 700);
+            titleStyle.setFont(titleFont);
+
+            CellStyle headerStyle = workbook.createCellStyle();
+            headerStyle.setAlignment((short) 2);
+            headerStyle.setBorderBottom((short) 2);
+            headerStyle.setBorderTop((short) 2);
+
             while (page <= maxPage) {
                 logQuery.setPageSize(rowsPerSheet);
                 logQuery.setPage(page);
-                //Prevent errors when performing deep paging in the ES database
                 logQuery.setSearchAfter(lastSortValues);
 
                 Result<LogDTO> logDTOResult = this.logQuery(logQuery);
@@ -776,7 +833,6 @@ public class EsDataServiceImpl implements EsDataService, LogDataService, EsDataB
                     headers = new ArrayList<>(list.getFirst().keySet());
                 }
 
-                //If the table header is empty, then obtain the header from the current page.
                 if (headers == null || headers.isEmpty()) {
                     headers = new ArrayList<>(list.getFirst().keySet());
                 }
@@ -784,16 +840,10 @@ public class EsDataServiceImpl implements EsDataService, LogDataService, EsDataB
                 Sheet sheet = workbook.createSheet("Sheet" + page);
                 int dataBeginRow;
 
-                if (title != null && !title.isEmpty() && page == 1) {  //only the first sheet has a title
+                if (title != null && !title.isEmpty() && page == 1) {
                     Row titleRow = sheet.createRow(0);
                     Cell cell = titleRow.createCell(0);
                     cell.setCellValue(title);
-                    CellStyle titleStyle = workbook.createCellStyle();
-                    titleStyle.setAlignment((short) 2);
-                    titleStyle.setVerticalAlignment((short) 1);
-                    Font titleFont = workbook.createFont();
-                    titleFont.setBoldweight((short) 700);
-                    titleStyle.setFont(titleFont);
                     cell.setCellStyle(titleStyle);
                     titleRow.setHeight((short) 450);
                     dataBeginRow = list != null && !list.isEmpty() ? ((Map) list.get(0)).size() - 1 : 5;
@@ -801,10 +851,6 @@ public class EsDataServiceImpl implements EsDataService, LogDataService, EsDataB
                 }
 
                 if (list != null && !list.isEmpty()) {
-                    CellStyle headerStyle = workbook.createCellStyle();
-                    headerStyle.setAlignment((short) 2);
-                    headerStyle.setBorderBottom((short) 2);
-                    headerStyle.setBorderTop((short) 2);
                     int headRowIndex = title != null && !title.isEmpty() && page == 1 ? 1 : 0;
                     Row headRow = sheet.createRow(headRowIndex);
                     int i = 0;
@@ -829,18 +875,21 @@ public class EsDataServiceImpl implements EsDataService, LogDataService, EsDataB
                 lastSortValues = logDTOResult.getData().getThisSortValue();
                 page++;
             }
-            // Download
             String fileName = String.format("%s_log.xlsx", logQuery.getLogstore());
             searchLog.downLogFileV2(workbook, fileName);
         } finally {
-            // Ensure temporary files are cleaned up even if an exception occurs
+            EXPORT_SEMAPHORE.release();
             if (workbook != null) {
                 try {
                     workbook.close();
                 } catch (Exception e) {
                     log.error("Error closing workbook", e);
                 } finally {
-                    workbook.dispose();
+                    try {
+                        workbook.dispose();
+                    } catch (Exception e) {
+                        log.error("Error disposing workbook temp files", e);
+                    }
                 }
             }
         }
