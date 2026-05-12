@@ -162,20 +162,12 @@ public class WildcardChannelServiceImpl extends AbstractChannelService {
     }
 
     private String expandOpenclawIfNeeded(String logPattern, Input input) {
-        String openclawLogTypeStr = Config.ins().get(OPENCLAW_LOG_TYPE_KEY, "");
+        String openclawLogType = Config.ins().get(OPENCLAW_LOG_TYPE_KEY, "");
         String openclawDirPrefix = Config.ins().get(OPENCLAW_DIR_PREFIX_KEY, "");
-        if (StringUtils.isBlank(openclawLogTypeStr) || StringUtils.isBlank(openclawDirPrefix)) {
+        if (StringUtils.isBlank(openclawLogType) || StringUtils.isBlank(openclawDirPrefix)) {
             return logPattern;
         }
-        Integer openclawLogType;
-        try {
-            openclawLogType = Integer.parseInt(openclawLogTypeStr.trim());
-        } catch (NumberFormatException e) {
-            return logPattern;
-        }
-        LogTypeEnum logTypeEnum = LogTypeEnum.name2enum(input.getType());
-        Integer logTypeCode = logTypeEnum != null ? logTypeEnum.getType() : null;
-        if (!openclawLogType.equals(logTypeCode)) {
+        if (!openclawLogType.trim().equals(input.getType())) {
             return logPattern;
         }
         List<String> expanded = expandOpenclawWildcardPaths(logPattern, openclawDirPrefix);
